@@ -20,6 +20,7 @@ class MovieEndTimeCalculator {
         
         this.populateBufferOptions();
         this.init();
+        this.movieTitleInput.focus();
     }
     
     populateBufferOptions() {
