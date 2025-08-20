@@ -29,14 +29,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Optional: Local web server for development
 
 ### Configuration
-1. Copy `config.json.example` to `config.json`
-2. Add your TMDB API key to `config.json`:
-   ```json
-   {
-     "tmdbApiKey": "your_actual_api_key_here"
-   }
+1. Set the `TMDB_API_KEY` environment variable:
+   ```bash
+   export TMDB_API_KEY=your_actual_api_key_here
    ```
-3. Open `index.html` in browser or serve locally
+2. Open `index.html` in browser or serve locally
 
 ## Architecture Notes
 

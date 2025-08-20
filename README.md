@@ -19,12 +19,9 @@ A simple web app to calculate when your movie will end, including buffer time fo
    - Copy your API key
 
 2. **Configure the App**:
-   - Copy `config.json.example` to `config.json`
-   - Replace `your_tmdb_api_key_here` with your actual API key:
-     ```json
-     {
-       "tmdbApiKey": "your_actual_api_key_here"
-     }
+   - Set the `TMDB_API_KEY` environment variable with your API key:
+     ```bash
+     export TMDB_API_KEY=your_actual_api_key_here
      ```
 
 3. **Run the App**:
