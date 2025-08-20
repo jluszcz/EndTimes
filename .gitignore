@@ -1,2 +1,18 @@
+# Claude Code
 .claude/
+
+# Environment variables and secrets
 .dev.vars
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Cloudflare Workers
+.wrangler/
+wrangler.toml.bak
