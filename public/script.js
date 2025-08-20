@@ -3,12 +3,9 @@ const VALID_BUFFER_VALUES = ['0', '5', '10', '15', '20', '25', '30'];
 
 class MovieEndTimeCalculator {
     constructor() {
-        try {
-            this.apiKey = env.TMDB_API_KEY;
-        } catch (error) {
-            this.apiKey = null;
-        }
-        this.baseUrl = 'https://api.themoviedb.org/3';
+        // API calls now go through our Worker, no need for direct TMDB API key
+        this.apiKey = null;
+        this.baseUrl = '/api';
         
         this.movieTitleInput = document.getElementById('movie-title');
         this.startTimeInput = document.getElementById('start-time');
@@ -125,15 +122,12 @@ class MovieEndTimeCalculator {
     }
     
     async searchMovie(title) {
-        if (!this.apiKey) {
-            throw new Error('TMDB API key not configured. Please set the TMDB_API_KEY environment variable.');
-        }
-        
-        const searchUrl = `${this.baseUrl}/search/movie?api_key=${this.apiKey}&query=${encodeURIComponent(title)}`;
+        const searchUrl = `${this.baseUrl}/search?query=${encodeURIComponent(title)}`;
         const response = await fetch(searchUrl);
         
         if (!response.ok) {
-            throw new Error('Failed to search for movies');
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || 'Failed to search for movies');
         }
         
         const data = await response.json();
@@ -162,11 +156,12 @@ class MovieEndTimeCalculator {
     }
     
     async getMovieDetails(movieId) {
-        const detailsUrl = `${this.baseUrl}/movie/${movieId}?api_key=${this.apiKey}`;
+        const detailsUrl = `${this.baseUrl}/movie/${movieId}`;
         const response = await fetch(detailsUrl);
         
         if (!response.ok) {
-            throw new Error('Failed to get movie details');
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || 'Failed to get movie details');
         }
         
         return await response.json();
