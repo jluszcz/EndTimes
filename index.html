@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>End Times</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>End Times</h1>
+        </header>
+
+        <main class="app">
+            <div class="input-group">
+                <label for="movie-title">Movie Title</label>
+                <input type="text" id="movie-title" placeholder="Enter movie title..." />
+            </div>
+
+            <div class="input-group">
+                <label for="start-time">Start Time</label>
+                <input type="time" id="start-time" />
+            </div>
+
+            <div class="input-group">
+                <label for="buffer-time">Trailer Duration <span class="unit-label">(minutes)</span></label>
+                <select id="buffer-time">
+                    <!-- Options populated by JavaScript -->
+                </select>
+            </div>
+
+            <button id="calculate-btn" type="button">Go</button>
+
+            <div id="results" class="results" style="display: none;">
+                <div class="movie-info">
+                    <h3 id="movie-name"></h3>
+                    <p id="movie-details"></p>
+                </div>
+                <div class="times">
+                    <div class="time-display">
+                        <label>Est. Start Time</label>
+                        <div id="est-start-time" class="time-value"></div>
+                    </div>
+                    <div class="time-display">
+                        <label>Est. End Time</label>
+                        <div id="est-end-time" class="time-value"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="loading" class="loading" style="display: none;">
+                <p>Searching for movie...</p>
+            </div>
+
+            <div id="error" class="error" style="display: none;">
+                <p id="error-message"></p>
+            </div>
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
