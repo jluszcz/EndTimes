@@ -3,7 +3,11 @@ const VALID_BUFFER_VALUES = ['0', '5', '10', '15', '20', '25', '30'];
 
 class MovieEndTimeCalculator {
     constructor() {
-        this.apiKey = null;
+        try {
+            this.apiKey = env.TMDB_API_KEY;
+        } catch (error) {
+            this.apiKey = null;
+        }
         this.baseUrl = 'https://api.themoviedb.org/3';
         
         this.movieTitleInput = document.getElementById('movie-title');
@@ -52,20 +56,7 @@ class MovieEndTimeCalculator {
     }
     
     async initializeAsync() {
-        await this.loadApiKey();
         await this.loadFromUrlParams();
-    }
-    
-    async loadApiKey() {
-        try {
-            const response = await fetch('config.json');
-            if (response.ok) {
-                const config = await response.json();
-                this.apiKey = config.tmdbApiKey;
-            } else {
-            }
-        } catch (error) {
-        }
     }
     
     async loadFromUrlParams() {
@@ -134,7 +125,7 @@ class MovieEndTimeCalculator {
     
     async searchMovie(title) {
         if (!this.apiKey) {
-            throw new Error('TMDB API key not configured. Please create config.json with your API key.');
+            throw new Error('TMDB API key not configured. Please set the TMDB_API_KEY environment variable.');
         }
         
         const searchUrl = `${this.baseUrl}/search/movie?api_key=${this.apiKey}&query=${encodeURIComponent(title)}`;
