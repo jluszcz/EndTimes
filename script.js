@@ -1,3 +1,6 @@
+// Validation constants
+const VALID_BUFFER_VALUES = ['0', '5', '10', '15', '20', '25', '30'];
+
 class MovieEndTimeCalculator {
     constructor() {
         this.apiKey = null;
@@ -11,7 +14,20 @@ class MovieEndTimeCalculator {
         this.loadingDiv = document.getElementById('loading');
         this.errorDiv = document.getElementById('error');
         
+        this.populateBufferOptions();
         this.init();
+    }
+    
+    populateBufferOptions() {
+        VALID_BUFFER_VALUES.forEach(value => {
+            const option = document.createElement('option');
+            option.value = value;
+            option.textContent = value;
+            if (value === '20') {
+                option.selected = true;
+            }
+            this.bufferTimeSelect.appendChild(option);
+        });
     }
     
     init() {
@@ -37,7 +53,7 @@ class MovieEndTimeCalculator {
     
     async initializeAsync() {
         await this.loadApiKey();
-        this.loadFromUrlParams();
+        await this.loadFromUrlParams();
     }
     
     async loadApiKey() {
@@ -46,16 +62,13 @@ class MovieEndTimeCalculator {
             if (response.ok) {
                 const config = await response.json();
                 this.apiKey = config.tmdbApiKey;
-                console.log('API key loaded successfully');
             } else {
-                console.warn('config.json not found. Please create it with your TMDB API key.');
             }
         } catch (error) {
-            console.warn('Failed to load config.json:', error.message);
         }
     }
     
-    loadFromUrlParams() {
+    async loadFromUrlParams() {
         const urlParams = new URLSearchParams(window.location.search);
         
         const movie = urlParams.get('movie');
@@ -67,16 +80,18 @@ class MovieEndTimeCalculator {
             this.movieTitleInput.value = movie;
         }
         
-        if (time) {
+        // Add time format validation
+        const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+        if (time && timeRegex.test(time)) {
             this.startTimeInput.value = time;
         }
         
-        if (buffer && ['0', '5', '10', '15', '20', '25', '30'].includes(buffer)) {
+        if (buffer && VALID_BUFFER_VALUES.includes(buffer)) {
             this.bufferTimeSelect.value = buffer;
         }
         
         if (movie && auto === 'true') {
-            setTimeout(() => this.handleCalculate(), 500);
+            await this.handleCalculate();
         }
     }
     
@@ -113,7 +128,6 @@ class MovieEndTimeCalculator {
             const movieDetails = await this.getMovieDetails(movie.id);
             this.calculateAndDisplayTimes(movieDetails, startTime, bufferMinutes);
         } catch (error) {
-            console.error('Error:', error);
             this.showError(error.message || 'Failed to find movie information');
         }
     }
@@ -185,7 +199,14 @@ class MovieEndTimeCalculator {
     
     displayResults(movie, estStartTime, estEndTime, runtime) {
         const movieNameEl = document.getElementById('movie-name');
-        movieNameEl.innerHTML = `${movie.title} <span class="movie-meta">(${movie.release_date ? movie.release_date.split('-')[0] : 'Unknown year'}) • ${runtime} min</span>`;
+        // Safely set movie title and metadata to prevent XSS
+        movieNameEl.textContent = movie.title;
+        
+        const metaSpan = document.createElement('span');
+        metaSpan.className = 'movie-meta';
+        metaSpan.textContent = `(${movie.release_date ? movie.release_date.split('-')[0] : 'Unknown year'}) • ${runtime} min`;
+        movieNameEl.appendChild(document.createTextNode(' '));
+        movieNameEl.appendChild(metaSpan);
         document.getElementById('movie-details').textContent = '';
         
         document.getElementById('est-start-time').textContent = 
