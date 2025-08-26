@@ -221,3 +221,25 @@ header p {
         font-size: 1.5rem;
     }
 }
+
+footer {
+    background: #f8f9fa;
+    padding: 20px;
+    text-align: center;
+    border-top: 1px solid #e9ecef;
+}
+
+.attribution {
+    font-size: 0.8rem;
+    color: #666;
+    line-height: 1.4;
+}
+
+.attribution a {
+    color: #4a90e2;
+    text-decoration: none;
+}
+
+.attribution a:hover {
+    text-decoration: underline;
+}
