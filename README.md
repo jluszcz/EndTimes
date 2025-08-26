@@ -62,3 +62,9 @@ After searching, the URL automatically updates so you can bookmark or share your
 - Calculates estimated end time (start time + trailer duration + movie runtime)
 - Updates URL parameters for easy bookmarking and sharing
 - Displays times in an easy-to-read format
+
+## Attribution
+
+This application uses TMDB and the TMDB APIs but is not endorsed, certified, or otherwise approved by TMDB.
+
+Data and images are provided by [The Movie Database (TMDB)](https://www.themoviedb.org/).
