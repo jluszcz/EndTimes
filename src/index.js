@@ -1,4 +1,10 @@
 export default {
+    // JWKS cache to avoid repeated fetches
+    jwksCache: new Map(),
+    
+    // Rate limiting storage (IP -> { count, windowStart })
+    rateLimitStorage: new Map(),
+    
     async fetch(request, env, ctx) {
         const url = new URL(request.url);
         
@@ -9,6 +15,206 @@ export default {
         
         // Serve static assets for all other requests
         return env.ASSETS.fetch(request);
+    },
+
+    // Helper method for safe base64url decoding using Node.js Buffer API
+    safeBase64UrlDecode(str) {
+        try {
+            // Buffer handles base64url natively and is more robust than manual conversion
+            return Buffer.from(str, 'base64url').toString('utf8');
+        } catch (error) {
+            throw new Error(`Base64URL decode failed: ${error.message}`);
+        }
+    },
+
+    // Rate limiting for JWT verification (100 requests per minute per IP)
+    checkRateLimit(request) {
+        const clientIP = request.headers.get('CF-Connecting-IP') || 
+                        request.headers.get('X-Forwarded-For') || 
+                        'unknown';
+        
+        const now = Date.now();
+        const windowMs = 60 * 1000; // 1 minute window
+        const maxRequests = 100;    // 100 requests per minute
+        
+        const key = `auth_${clientIP}`;
+        const record = this.rateLimitStorage.get(key);
+        
+        // Clean up old records periodically
+        if (Math.random() < 0.01) { // 1% chance
+            this.cleanupRateLimit(now, windowMs);
+        }
+        
+        if (!record || (now - record.windowStart) > windowMs) {
+            // New window
+            this.rateLimitStorage.set(key, {
+                count: 1,
+                windowStart: now
+            });
+            return true;
+        }
+        
+        if (record.count >= maxRequests) {
+            return false; // Rate limited
+        }
+        
+        record.count++;
+        return true;
+    },
+
+    // Clean up expired rate limit records
+    cleanupRateLimit(now, windowMs) {
+        for (const [key, record] of this.rateLimitStorage.entries()) {
+            if ((now - record.windowStart) > windowMs * 2) { // Keep for 2 windows
+                this.rateLimitStorage.delete(key);
+            }
+        }
+    },
+
+    // Validate CORS origin against allowed list
+    validateOrigin(origin, env) {
+        if (!origin) {
+            return null; // No origin header, allow for same-origin requests
+        }
+
+        const allowedOrigins = [
+            // Production domain (from Auth0 audience)
+            env.AUTH0_AUDIENCE || 'https://end-times.jacob-luszcz.workers.dev',
+            // Development domains
+            'http://localhost:8787',
+            'http://127.0.0.1:8787',
+            // If there's a custom domain env var, include it
+            env.CUSTOM_DOMAIN ? `https://${env.CUSTOM_DOMAIN}` : null,
+            // Allow other *.workers.dev subdomains for this app in different environments
+            /^https:\/\/[\w-]+-end-times\.[\w-]+\.workers\.dev$/,
+        ].filter(Boolean); // Remove null entries
+
+        // Check exact matches first
+        const exactMatch = allowedOrigins.find(allowed => 
+            typeof allowed === 'string' && allowed === origin
+        );
+        if (exactMatch) {
+            return origin;
+        }
+
+        // Check regex patterns
+        const regexMatch = allowedOrigins.find(allowed => 
+            allowed instanceof RegExp && allowed.test(origin)
+        );
+        if (regexMatch) {
+            return origin;
+        }
+
+        // Origin not allowed
+        return null;
+    },
+
+    // Generate CORS headers with validated origin
+    generateCorsHeaders(request, env) {
+        const origin = request.headers.get('Origin');
+        const validatedOrigin = this.validateOrigin(origin, env);
+        
+        const headers = {
+            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+            'Access-Control-Max-Age': '86400', // Cache preflight for 24 hours
+        };
+
+        if (validatedOrigin) {
+            headers['Access-Control-Allow-Origin'] = validatedOrigin;
+            headers['Access-Control-Allow-Credentials'] = 'true';
+        } else if (origin) {
+            // Origin provided but not allowed - be explicit about rejection
+            console.warn(`CORS: Rejected origin ${origin}`);
+        }
+
+        return headers;
+    },
+
+    // Sanitize error messages for production
+    sanitizeError(error, env, errorType = 'generic') {
+        const isDevelopment = env.ENVIRONMENT === 'development';
+        
+        // Always log the full error for debugging (server-side only)
+        console.error(`[${errorType}] ${error.message}`, {
+            stack: error.stack,
+            timestamp: new Date().toISOString()
+        });
+
+        // In development, return detailed errors. In production, return sanitized ones.
+        if (isDevelopment) {
+            return {
+                error: errorType,
+                message: error.message,
+                debug: true
+            };
+        }
+
+        // Production error mapping - don't expose internal details
+        const sanitizedMessages = {
+            'authentication': 'Authentication failed',
+            'authorization': 'Access denied',
+            'validation': 'Invalid input provided',
+            'external_api': 'External service temporarily unavailable',
+            'rate_limit': 'Too many requests',
+            'generic': 'Internal server error occurred'
+        };
+
+        return {
+            error: errorType,
+            message: sanitizedMessages[errorType] || sanitizedMessages.generic
+        };
+    },
+
+    // JWKS fetching with caching and error handling
+    async getJWKS(domain) {
+        const cacheKey = `jwks_${domain}`;
+        const cached = this.jwksCache.get(cacheKey);
+        
+        // Check if we have a valid cached entry (5 minutes TTL)
+        if (cached && (Date.now() - cached.timestamp) < 5 * 60 * 1000) {
+            return cached.data;
+        }
+
+        try {
+            const jwksUrl = `https://${domain}/.well-known/jwks.json`;
+            const response = await fetch(jwksUrl, {
+                headers: {
+                    'Accept': 'application/json',
+                    'User-Agent': 'EndTimes/1.0'
+                },
+                cf: {
+                    cacheTtl: 300, // 5 minutes
+                    cacheEverything: true
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`JWKS fetch failed with status ${response.status}`);
+            }
+
+            const jwks = await response.json();
+            
+            // Validate JWKS structure
+            if (!jwks.keys || !Array.isArray(jwks.keys) || jwks.keys.length === 0) {
+                throw new Error('Invalid JWKS structure');
+            }
+
+            // Cache the result
+            this.jwksCache.set(cacheKey, {
+                data: jwks,
+                timestamp: Date.now()
+            });
+
+            return jwks;
+        } catch (error) {
+            // If we have a stale cache entry, use it as fallback
+            if (cached) {
+                console.warn('Using stale JWKS cache due to fetch error:', error.message);
+                return cached.data;
+            }
+            throw new Error(`Failed to fetch JWKS: ${error.message}`);
+        }
     },
 
     // JWT verification utilities
@@ -23,16 +229,19 @@ export default {
             const [headerB64, payloadB64, signatureB64] = tokenParts;
             
             // Decode JWT header to get key ID
-            const header = JSON.parse(atob(headerB64));
+            let header;
+            try {
+                header = JSON.parse(this.safeBase64UrlDecode(headerB64));
+            } catch (error) {
+                throw new Error(`Invalid JWT header encoding: ${error.message}`);
+            }
             
             if (!header.kid) {
                 throw new Error('No key ID in JWT header');
             }
 
-            // Get JWKS from Auth0
-            const jwksUrl = `https://${env.AUTH0_DOMAIN}/.well-known/jwks.json`;
-            const jwksResponse = await fetch(jwksUrl);
-            const jwks = await jwksResponse.json();
+            // Get JWKS from Auth0 with caching and error handling
+            const jwks = await this.getJWKS(env.AUTH0_DOMAIN);
             
             // Find the matching key
             const key = jwks.keys.find(k => k.kid === header.kid);
@@ -65,7 +274,12 @@ export default {
             }
 
             // Decode and validate payload
-            const payload = JSON.parse(atob(payloadB64));
+            let payload;
+            try {
+                payload = JSON.parse(this.safeBase64UrlDecode(payloadB64));
+            } catch (error) {
+                throw new Error(`Invalid JWT payload encoding: ${error.message}`);
+            }
             
             // Check expiration
             if (payload.exp && payload.exp < Date.now() / 1000) {
@@ -105,19 +319,12 @@ export default {
     },
 
     base64UrlDecode(str) {
-        // Convert base64url to base64
-        str = str.replace(/-/g, '+').replace(/_/g, '/');
-        // Pad if necessary
-        while (str.length % 4) {
-            str += '=';
+        try {
+            // Use Buffer for consistent base64url handling, return Uint8Array for crypto operations
+            return Buffer.from(str, 'base64url');
+        } catch (error) {
+            throw new Error(`Base64URL decode failed: ${error.message}`);
         }
-        // Decode base64 to Uint8Array
-        const binary = atob(str);
-        const bytes = new Uint8Array(binary.length);
-        for (let i = 0; i < binary.length; i++) {
-            bytes[i] = binary.charCodeAt(i);
-        }
-        return bytes;
     },
 
     async requireAuth(request, env) {
@@ -132,16 +339,27 @@ export default {
     },
     
     async handleApiRequest(request, env, url) {
-        // Add CORS headers for API responses
-        const corsHeaders = {
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-            'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-        };
+        // Generate CORS headers with origin validation
+        const corsHeaders = this.generateCorsHeaders(request, env);
         
         // Handle preflight requests
         if (request.method === 'OPTIONS') {
             return new Response(null, { headers: corsHeaders });
+        }
+        
+        // Reject requests from invalid origins
+        const origin = request.headers.get('Origin');
+        if (origin && !corsHeaders['Access-Control-Allow-Origin']) {
+            return new Response(JSON.stringify({ 
+                error: 'Origin not allowed',
+                message: 'Cross-origin requests from this domain are not permitted'
+            }), {
+                status: 403,
+                headers: {
+                    'Content-Type': 'application/json'
+                    // Intentionally not including CORS headers for rejected origins
+                }
+            });
         }
         
         // Check if Auth0 is configured
@@ -173,14 +391,27 @@ export default {
         try {
             // Require authentication for protected endpoints
             let user = null;
-            if (url.pathname === '/api/search' || url.pathname.startsWith('/api/movie/')) {
+            if (url.pathname === '/api/search' || url.pathname.startsWith('/api/movie/') || url.pathname === '/api/user') {
+                // Check rate limit before authentication
+                if (!this.checkRateLimit(request)) {
+                    return new Response(JSON.stringify({ 
+                        error: 'Rate limit exceeded',
+                        message: 'Too many authentication requests. Please try again later.' 
+                    }), {
+                        status: 429,
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Retry-After': '60',
+                            ...corsHeaders
+                        }
+                    });
+                }
+                
                 try {
                     user = await this.requireAuth(request, env);
                 } catch (error) {
-                    return new Response(JSON.stringify({ 
-                        error: 'Authentication required',
-                        message: error.message 
-                    }), {
+                    const sanitizedError = this.sanitizeError(error, env, 'authentication');
+                    return new Response(JSON.stringify(sanitizedError), {
                         status: 401,
                         headers: {
                             'Content-Type': 'application/json',
@@ -196,6 +427,8 @@ export default {
                 return this.handleMovieDetails(request, env, url, corsHeaders, user);
             } else if (url.pathname === '/api/user') {
                 return this.handleUserInfo(request, env, corsHeaders, user);
+            } else if (url.pathname === '/api/config/auth0') {
+                return this.handleAuth0Config(request, env, corsHeaders);
             }
             
             // Unknown API endpoint
@@ -210,10 +443,8 @@ export default {
             });
             
         } catch (error) {
-            return new Response(JSON.stringify({ 
-                error: 'Internal server error',
-                message: error.message 
-            }), {
+            const sanitizedError = this.sanitizeError(error, env, 'generic');
+            return new Response(JSON.stringify(sanitizedError), {
                 status: 500,
                 headers: {
                     'Content-Type': 'application/json',
@@ -243,10 +474,10 @@ export default {
         const response = await fetch(tmdbUrl);
         
         if (!response.ok) {
-            return new Response(JSON.stringify({ 
-                error: 'Failed to search movies' 
-            }), {
-                status: response.status,
+            const mockError = new Error(`TMDB API error: ${response.status}`);
+            const sanitizedError = this.sanitizeError(mockError, env, 'external_api');
+            return new Response(JSON.stringify(sanitizedError), {
+                status: response.status >= 500 ? 503 : 400, // Service unavailable for server errors
                 headers: {
                     'Content-Type': 'application/json',
                     ...corsHeaders
@@ -284,10 +515,10 @@ export default {
         const response = await fetch(tmdbUrl);
         
         if (!response.ok) {
-            return new Response(JSON.stringify({ 
-                error: 'Failed to get movie details' 
-            }), {
-                status: response.status,
+            const mockError = new Error(`TMDB API error: ${response.status}`);
+            const sanitizedError = this.sanitizeError(mockError, env, 'external_api');
+            return new Response(JSON.stringify(sanitizedError), {
+                status: response.status >= 500 ? 503 : 400, // Service unavailable for server errors
                 headers: {
                     'Content-Type': 'application/json',
                     ...corsHeaders
@@ -311,10 +542,8 @@ export default {
             try {
                 user = await this.requireAuth(request, env);
             } catch (error) {
-                return new Response(JSON.stringify({ 
-                    error: 'Authentication required',
-                    message: error.message 
-                }), {
+                const sanitizedError = this.sanitizeError(error, env, 'authentication');
+                return new Response(JSON.stringify(sanitizedError), {
                     status: 401,
                     headers: {
                         'Content-Type': 'application/json',
@@ -331,6 +560,20 @@ export default {
             email: user.email,
             email_verified: user.email_verified,
             picture: user.picture
+        }), {
+            headers: {
+                'Content-Type': 'application/json',
+                ...corsHeaders
+            }
+        });
+    },
+
+    async handleAuth0Config(request, env, corsHeaders) {
+        // This endpoint doesn't require authentication as it provides public configuration
+        return new Response(JSON.stringify({
+            domain: env.AUTH0_DOMAIN,
+            clientId: env.AUTH0_CLIENT_ID,
+            audience: env.AUTH0_AUDIENCE
         }), {
             headers: {
                 'Content-Type': 'application/json',

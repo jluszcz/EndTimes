@@ -2,16 +2,37 @@ class AuthService {
     constructor() {
         this.auth0Client = null;
         this.isInitialized = false;
-        this.config = {
-            domain: window.AUTH0_DOMAIN,
-            clientId: window.AUTH0_CLIENT_ID,
-            authorizationParams: {
-                redirect_uri: window.location.origin,
-                audience: window.AUTH0_AUDIENCE
-            },
-            useRefreshTokens: true,
-            cacheLocation: 'localstorage'
-        };
+        this.config = null;
+    }
+
+    async fetchAuth0Config() {
+        if (this.config) {
+            return this.config;
+        }
+
+        try {
+            const response = await fetch('/api/config/auth0');
+            if (!response.ok) {
+                throw new Error(`Failed to fetch Auth0 config: ${response.status}`);
+            }
+            
+            const configData = await response.json();
+            this.config = {
+                domain: configData.domain,
+                clientId: configData.clientId,
+                authorizationParams: {
+                    redirect_uri: window.location.origin,
+                    audience: configData.audience
+                },
+                useRefreshTokens: true,
+                cacheLocation: 'localstorage'
+            };
+            
+            return this.config;
+        } catch (error) {
+            console.error('Failed to fetch Auth0 configuration:', error);
+            throw error;
+        }
     }
 
     async initialize() {
@@ -20,6 +41,9 @@ class AuthService {
         }
 
         try {
+            // Fetch configuration first
+            await this.fetchAuth0Config();
+            
             this.auth0Client = await auth0.createAuth0Client(this.config);
             this.isInitialized = true;
             

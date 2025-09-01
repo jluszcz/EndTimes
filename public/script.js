@@ -172,14 +172,19 @@ class MovieEndTimeCalculator {
             this.movieTitleInput.value = movie;
         }
         
-        // Add time format validation
+        // Time validation: Check format first, then set value
         const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
         if (time && timeRegex.test(time)) {
             this.startTimeInput.value = time;
         }
         
-        if (buffer && VALID_BUFFER_VALUES.includes(buffer)) {
-            this.bufferTimeSelect.value = buffer;
+        // Buffer validation: Convert to integer, validate type and range, then set value
+        if (buffer) {
+            const bufferInt = parseInt(buffer, 10);
+            const bufferStr = bufferInt.toString();
+            if (!isNaN(bufferInt) && VALID_BUFFER_VALUES.includes(bufferStr)) {
+                this.bufferTimeSelect.value = bufferStr;
+            }
         }
         
         if (movie && auto === 'true') {
