@@ -73,8 +73,23 @@ export default {
             }
 
             // Check audience
-            if (env.AUTH0_AUDIENCE && payload.aud !== env.AUTH0_AUDIENCE) {
-                throw new Error('Invalid audience');
+            if (env.AUTH0_AUDIENCE) {
+                const expectedAudience = env.AUTH0_AUDIENCE;
+                const tokenAudience = payload.aud;
+                
+                // JWT audience can be string or array of strings
+                const isValidAudience = Array.isArray(tokenAudience) 
+                    ? tokenAudience.includes(expectedAudience)
+                    : tokenAudience === expectedAudience;
+                    
+                if (!isValidAudience) {
+                    console.error('Audience mismatch:', {
+                        expected: expectedAudience,
+                        received: tokenAudience,
+                        payloadType: typeof tokenAudience
+                    });
+                    throw new Error('Invalid audience');
+                }
             }
 
             // Check issuer

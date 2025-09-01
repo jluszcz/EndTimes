@@ -94,7 +94,7 @@ class MovieEndTimeCalculator {
     async showAuthenticatedState() {
         try {
             const user = await window.authService.getUser();
-            this.userName.textContent = user.name || user.email || 'User';
+            this.userName.textContent = '';
             this.showAuthUser();
         } catch (error) {
             console.error('Failed to get user:', error);
