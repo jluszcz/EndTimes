@@ -15,9 +15,18 @@ class MovieEndTimeCalculator {
         this.loadingDiv = document.getElementById('loading');
         this.errorDiv = document.getElementById('error');
         
+        // Authentication UI elements
+        this.authLoading = document.getElementById('auth-loading');
+        this.authLogin = document.getElementById('auth-login');
+        this.authUser = document.getElementById('auth-user');
+        this.loginBtn = document.getElementById('login-btn');
+        this.logoutBtn = document.getElementById('logout-btn');
+        this.userName = document.getElementById('user-name');
+        this.appLoading = document.getElementById('app-loading');
+        this.appContent = document.getElementById('app-content');
+        
         this.populateBufferOptions();
         this.init();
-        this.movieTitleInput.focus();
     }
     
     populateBufferOptions() {
@@ -44,6 +53,10 @@ class MovieEndTimeCalculator {
                 }
             });
         });
+
+        // Authentication event listeners
+        this.loginBtn.addEventListener('click', () => this.handleLogin());
+        this.logoutBtn.addEventListener('click', () => this.handleLogout());
         
         this.setCurrentTime();
         this.initializeAsync();
@@ -54,7 +67,97 @@ class MovieEndTimeCalculator {
     }
     
     async initializeAsync() {
-        await this.loadFromUrlParams();
+        this.showAppLoading();
+        
+        try {
+            // Initialize authentication
+            await window.authService.initialize();
+            
+            // Check if user is authenticated
+            const isAuthenticated = await window.authService.isAuthenticated();
+            
+            if (isAuthenticated) {
+                await this.showAuthenticatedState();
+                this.showAppContent();
+                await this.loadFromUrlParams();
+                this.movieTitleInput.focus();
+            } else {
+                this.showLoginState();
+                this.showAppContent();
+            }
+        } catch (error) {
+            console.error('Failed to initialize authentication:', error);
+            this.showError('Failed to initialize. Please refresh the page.');
+        }
+    }
+
+    async showAuthenticatedState() {
+        try {
+            const user = await window.authService.getUser();
+            this.userName.textContent = user.name || user.email || 'User';
+            this.showAuthUser();
+        } catch (error) {
+            console.error('Failed to get user:', error);
+            this.showLoginState();
+        }
+    }
+
+    showLoginState() {
+        this.hideAuthLoading();
+        this.hideAuthUser();
+        this.showAuthLogin();
+    }
+
+    showAuthUser() {
+        this.hideAuthLoading();
+        this.hideAuthLogin();
+        this.authUser.style.display = 'block';
+    }
+
+    showAuthLogin() {
+        this.hideAuthLoading();
+        this.hideAuthUser();
+        this.authLogin.style.display = 'block';
+    }
+
+    hideAuthLoading() {
+        this.authLoading.style.display = 'none';
+    }
+
+    hideAuthUser() {
+        this.authUser.style.display = 'none';
+    }
+
+    hideAuthLogin() {
+        this.authLogin.style.display = 'none';
+    }
+
+    showAppLoading() {
+        this.appLoading.style.display = 'block';
+        this.appContent.style.display = 'none';
+    }
+
+    showAppContent() {
+        this.appLoading.style.display = 'none';
+        this.appContent.style.display = 'block';
+    }
+
+    async handleLogin() {
+        try {
+            await window.authService.login();
+        } catch (error) {
+            console.error('Login failed:', error);
+            this.showError('Login failed. Please try again.');
+        }
+    }
+
+    async handleLogout() {
+        try {
+            await window.authService.logout();
+        } catch (error) {
+            console.error('Logout failed:', error);
+            this.showError('Logout failed. Please try again.');
+        }
     }
     
     async loadFromUrlParams() {
@@ -95,6 +198,13 @@ class MovieEndTimeCalculator {
     }
     
     async handleCalculate() {
+        // Check if user is authenticated first
+        const isAuthenticated = await window.authService.isAuthenticated();
+        if (!isAuthenticated) {
+            this.showError('Please log in to search for movies');
+            return;
+        }
+
         const movieTitle = this.movieTitleInput.value.trim();
         const startTime = this.startTimeInput.value;
         const bufferMinutes = parseInt(this.bufferTimeSelect.value);
@@ -123,7 +233,12 @@ class MovieEndTimeCalculator {
     
     async searchMovie(title) {
         const searchUrl = `${this.baseUrl}/search?query=${encodeURIComponent(title)}`;
-        const response = await fetch(searchUrl);
+        const response = await window.authService.makeAuthenticatedRequest(searchUrl);
+        
+        if (!response) {
+            // User was redirected to login
+            return;
+        }
         
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
@@ -157,7 +272,12 @@ class MovieEndTimeCalculator {
     
     async getMovieDetails(movieId) {
         const detailsUrl = `${this.baseUrl}/movie/${movieId}`;
-        const response = await fetch(detailsUrl);
+        const response = await window.authService.makeAuthenticatedRequest(detailsUrl);
+        
+        if (!response) {
+            // User was redirected to login
+            return;
+        }
         
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
