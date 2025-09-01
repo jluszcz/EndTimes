@@ -3,13 +3,35 @@ class AuthService {
         this.auth0Client = null;
         this.isInitialized = false;
         this.config = null;
+        this.initializationPromise = null; // Cache the initialization promise
+        this.configPromise = null; // Cache the config fetch promise
     }
 
     async fetchAuth0Config() {
+        // If config is already loaded, return it immediately
         if (this.config) {
             return this.config;
         }
 
+        // If config fetch is in progress, return the existing promise
+        if (this.configPromise) {
+            return await this.configPromise;
+        }
+
+        // Start config fetch and cache the promise
+        this.configPromise = this._performConfigFetch();
+
+        try {
+            const config = await this.configPromise;
+            return config;
+        } catch (error) {
+            // Clear the cached promise on error so fetch can be retried
+            this.configPromise = null;
+            throw error;
+        }
+    }
+
+    async _performConfigFetch() {
         try {
             const response = await fetch('/api/config/auth0');
             if (!response.ok) {
@@ -36,10 +58,30 @@ class AuthService {
     }
 
     async initialize() {
+        // If already initialized, return the client immediately
         if (this.isInitialized) {
             return this.auth0Client;
         }
 
+        // If initialization is in progress, return the existing promise
+        if (this.initializationPromise) {
+            return await this.initializationPromise;
+        }
+
+        // Start initialization and cache the promise
+        this.initializationPromise = this._performInitialization();
+
+        try {
+            const client = await this.initializationPromise;
+            return client;
+        } catch (error) {
+            // Clear the cached promise on error so initialization can be retried
+            this.initializationPromise = null;
+            throw error;
+        }
+    }
+
+    async _performInitialization() {
         try {
             // Fetch configuration first
             await this.fetchAuth0Config();
