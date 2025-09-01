@@ -141,11 +141,31 @@ export default {
             timestamp: new Date().toISOString()
         });
 
-        // In development, return detailed errors. In production, return sanitized ones.
+        // Sensitive patterns that should never be exposed to clients
+        const sensitivePatterns = [
+            /api_key[=:]?\s*[\w-]+/gi,        // API keys
+            /secret[=:]?\s*[\w-]+/gi,         // Secrets
+            /token[=:]?\s*[\w.-]+/gi,         // Tokens
+            /password[=:]?\s*[\w-]+/gi,       // Passwords
+            /\/[A-Za-z]:[\\\/]/g,             // Windows file paths
+            /\/(?:home|Users|etc)\/[\w\/.-]+/g, // Unix file paths
+            /localhost:\d+/g,                 // Local server addresses
+            /\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}:\d+/g // IP addresses with ports
+        ];
+
+        // Clean sensitive information from error message
+        const cleanMessage = (message) => {
+            let cleaned = message;
+            sensitivePatterns.forEach(pattern => {
+                cleaned = cleaned.replace(pattern, '[REDACTED]');
+            });
+            return cleaned;
+        };
+
         if (isDevelopment) {
             return {
                 error: errorType,
-                message: error.message,
+                message: cleanMessage(error.message),
                 debug: true
             };
         }
@@ -210,10 +230,10 @@ export default {
         } catch (error) {
             // If we have a stale cache entry, use it as fallback
             if (cached) {
-                console.warn('Using stale JWKS cache due to fetch error:', error.message);
+                console.warn('Using stale JWKS cache due to network error - falling back to cached version');
                 return cached.data;
             }
-            throw new Error(`Failed to fetch JWKS: ${error.message}`);
+            throw new Error('Failed to fetch JWKS from identity provider');
         }
     },
 
@@ -297,11 +317,8 @@ export default {
                     : tokenAudience === expectedAudience;
                     
                 if (!isValidAudience) {
-                    console.error('Audience mismatch:', {
-                        expected: expectedAudience,
-                        received: tokenAudience,
-                        payloadType: typeof tokenAudience
-                    });
+                    // Log sanitized audience validation failure without exposing values
+                    console.warn('JWT audience validation failed - token audience does not match expected value');
                     throw new Error('Invalid audience');
                 }
             }
@@ -313,7 +330,8 @@ export default {
 
             return payload;
         } catch (error) {
-            console.error('JWT verification failed:', error);
+            // Log sanitized JWT verification failure without exposing token details
+            console.error('JWT verification failed:', error.message);
             throw error;
         }
     },
