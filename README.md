@@ -1,12 +1,12 @@
 # EndTimes
 
-A secure web application that calculates when your movie will end, including buffer time for previews and credits. Built on Cloudflare Workers with Auth0 authentication.
+A web application that calculates when your movie will end, including buffer time for previews and credits. Built on Cloudflare Workers with Cloudflare Access authentication.
 
 ## Features
 
-- **🔐 Secure Authentication**: Auth0 integration with JWT verification
+- **🔐 Secure Authentication**: Cloudflare Access with email or OAuth login
 - **🎬 Movie Search**: Searches The Movie Database (TMDB) for movies by title
-- **🎯 Smart Matching**: Finds the closest match prioritizing recent releases  
+- **🎯 Smart Matching**: Finds the closest match prioritizing recent releases
 - **⏰ Time Calculation**: Calculates end time based on start time + trailer duration + runtime
 - **📱 Responsive Design**: Works on both mobile and desktop devices
 - **🎭 Trailer Duration**: Configurable trailer time from 0-30 minutes (defaults to 20)
@@ -17,74 +17,83 @@ A secure web application that calculates when your movie will end, including buf
 
 - **Frontend**: Vanilla HTML5, CSS3, JavaScript (ES6+)
 - **Backend**: Cloudflare Workers (serverless JavaScript runtime)
-- **Authentication**: Auth0 with JWT verification and secure credential handling
+- **Authentication**: Cloudflare Access (zero-code authentication)
 - **API**: The Movie Database (TMDB) integration via protected endpoints
-- **Security**: CORS validation, rate limiting, error sanitization, JWKS caching
 
 ## Setup
 
 ### Prerequisites
 - Node.js and npm
 - Cloudflare account with Workers access
-- Auth0 account and application
 - TMDB API key
 
-### 1. Get Required API Keys
+### 1. Get TMDB API Key
 
-**TMDB API Key**:
-- Visit [The Movie Database](https://www.themoviedb.org/settings/api)
-- Create an account and request an API key
-
-**Auth0 Setup**:
-- Create an Auth0 account and application
-- Configure your Auth0 application:
-  - Application Type: Single Page Application
-  - Allowed Callback URLs: `https://your-domain.workers.dev`
-  - Allowed Web Origins: `https://your-domain.workers.dev`
-  - Allowed Logout URLs: `https://your-domain.workers.dev`
+Visit [The Movie Database](https://www.themoviedb.org/settings/api) and:
+- Create an account
+- Request an API key (free)
 
 ### 2. Install Dependencies
 ```bash
 npm install
 ```
 
-### 3. Configure Environment Variables
-Set up your secrets using Wrangler:
+### 3. Configure TMDB API Key
+
+Set up your TMDB API key using Wrangler:
 
 ```bash
-# TMDB API key
 npx wrangler secret put TMDB_API_KEY
-
-# Auth0 configuration
-npx wrangler secret put AUTH0_DOMAIN
-npx wrangler secret put AUTH0_CLIENT_ID  
-npx wrangler secret put AUTH0_AUDIENCE
 ```
 
 For local development, create a `.dev.vars` file:
 ```bash
 TMDB_API_KEY="your_tmdb_api_key"
-ENVIRONMENT="development"
-AUTH0_DOMAIN="your-auth0-domain.auth0.com"
-AUTH0_CLIENT_ID="your_auth0_client_id"
-AUTH0_AUDIENCE="https://your-domain.workers.dev"
 ```
 
-### 4. Development
+### 4. Configure Cloudflare Access
+
+Cloudflare Access handles all authentication - no code required!
+
+1. **Navigate to Zero Trust** in your Cloudflare Dashboard
+2. **Go to Access → Applications → Add an application**
+3. **Choose "Self-hosted"**
+4. **Configure Application:**
+   - **Name**: EndTimes
+   - **Session Duration**: 24 hours (or your preference)
+   - **Application domain**: Your Workers domain (e.g., `end-times.your-subdomain.workers.dev`)
+   - **Path**: Leave empty to protect entire application
+
+5. **Add a Policy:**
+   - **Policy name**: "Owner Access"
+   - **Action**: Allow
+   - **Configure rules**:
+     - Rule type: **Emails**
+     - Value: Your email address
+
+6. **Save**
+
+That's it! Access will now require login before anyone can reach your application.
+
+### 5. Development
 ```bash
 npm run dev
 # Server runs on http://localhost:8787
 ```
 
-### 5. Deployment
+**Note**: Cloudflare Access doesn't run in local development. To test locally without auth, temporarily comment out the Access application in your dashboard or test authentication features only in production.
+
+### 6. Deployment
 ```bash
 npm run deploy
 ```
 
+After deployment, visit your Workers URL. Cloudflare Access will prompt you to log in before accessing the application.
+
 ## Usage
 
 ### Getting Started
-1. **Authentication**: Click "Log In" to authenticate with Auth0
+1. **Authentication**: Visit your app URL - Cloudflare Access will prompt for login
 2. **Movie Search**: Enter a movie title in the search field
 3. **Set Time**: Choose your desired start time using the time picker
 4. **Configure Duration**: Select trailer duration from the dropdown (defaults to 20 minutes)
@@ -102,51 +111,33 @@ You can pre-fill the form and auto-search using URL parameters:
 
 **Examples:**
 ```
-index.html?movie=Dune&time=20:00&buffer=25
-index.html?movie=Oppenheimer&time=19:30&buffer=20&auto=true
+?movie=Dune&time=20:00&buffer=25
+?movie=Oppenheimer&time=19:30&buffer=20&auto=true
 ```
 
 After searching, the URL automatically updates so you can bookmark or share your searches.
 
 ## How It Works
 
-### Application Flow
-1. **Authentication**: Secure login via Auth0 with JWT token management
-2. **Configuration**: Auth0 settings dynamically loaded from secure API endpoint
-3. **Movie Search**: Protected API calls to TMDB with rate limiting and CORS validation
+1. **Authentication**: Cloudflare Access sits in front of your Worker and handles all authentication
+2. **Protected Access**: Only authenticated users can reach your application
+3. **Movie Search**: API calls to TMDB via your Worker's API proxy
 4. **Data Processing**: Calculate start/end times with trailer duration buffering
 5. **URL Management**: Automatic URL updating for bookmarking and sharing
-6. **Responsive UI**: Clean, mobile-first interface with loading states
-
-### Security Features
-- **🔐 JWT Verification**: Full Auth0 token validation with JWKS caching
-- **🛡️ CORS Protection**: Origin validation against configured allowlist
-- **⚡ Rate Limiting**: 100 requests per minute per IP for authentication endpoints  
-- **🔒 Error Sanitization**: Environment-aware error handling prevents information leakage
-- **🚫 Input Validation**: Robust frontend parameter validation and type checking
-- **🔑 Secure Configuration**: No hardcoded credentials, all secrets via environment variables
 
 ## API Endpoints
 
-All API endpoints require authentication via Auth0 JWT tokens.
+All API endpoints are automatically protected by Cloudflare Access.
 
-- `GET /api/config/auth0` - Public endpoint returning Auth0 configuration
-- `GET /api/search?query={title}` - Search movies by title (protected)
-- `GET /api/movie/{id}` - Get movie details by ID (protected)  
-- `GET /api/user` - Get authenticated user information (protected)
-
-### Rate Limits
-- Authentication endpoints: 100 requests per minute per IP
-- CORS validation: Configured allowlist with regex pattern support
-- JWKS caching: 5-minute TTL with stale fallback
+- `GET /api/search?query={title}` - Search movies by title
+- `GET /api/movie/{id}` - Get movie details by ID
 
 ## Development
 
 ### File Structure
 ```
 ├── public/              # Static frontend assets
-│   ├── index.html      # Main application interface  
-│   ├── auth.js         # Auth0 authentication client
+│   ├── index.html      # Main application interface
 │   ├── script.js       # Application logic and API client
 │   └── styles.css      # Responsive styling
 ├── src/
@@ -155,12 +146,22 @@ All API endpoints require authentication via Auth0 JWT tokens.
 └── package.json        # Dependencies and scripts
 ```
 
-### Security Considerations
-- All secrets stored as Wrangler environment variables
-- CORS origins validated against production/development allowlist
-- JWT tokens verified against Auth0 JWKS with caching
-- Error messages sanitized to prevent information leakage
-- Rate limiting prevents authentication abuse
+### Cost Optimization
+
+This setup is designed to be **free** for single-user applications:
+
+- **Cloudflare Workers**: Free tier includes 100,000 requests/day
+- **Cloudflare Access**: Free for up to 50 users
+- **TMDB API**: Free tier with sufficient quota for personal use
+
+### Adding More Users
+
+To add more users (up to 50 free users with Access):
+
+1. Go to your Cloudflare Access application
+2. Edit the policy rules
+3. Add additional email addresses or use email domain matching
+4. No code changes needed!
 
 ## Attribution
 
@@ -168,4 +169,4 @@ This application uses TMDB and the TMDB APIs but is not endorsed, certified, or 
 
 Data and images are provided by [The Movie Database (TMDB)](https://www.themoviedb.org/).
 
-Authentication powered by [Auth0](https://auth0.com/). Hosted on [Cloudflare Workers](https://workers.cloudflare.com/).
+Authentication powered by [Cloudflare Access](https://www.cloudflare.com/zero-trust/products/access/). Hosted on [Cloudflare Workers](https://workers.cloudflare.com/).

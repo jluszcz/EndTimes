@@ -5,39 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>End Times</title>
     <link rel="stylesheet" href="styles.css">
-
-    <!-- Auth0 SPA SDK -->
-    <script src="https://cdn.auth0.com/js/auth0-spa-js/2.1/auth0-spa-js.production.js"></script>
-
-    <!-- Auth0 Configuration will be loaded dynamically -->
 </head>
 <body>
     <div class="container">
         <header>
             <div class="header-content">
                 <h1><a href="index.html">End Times</a></h1>
-                <div class="auth-section">
-                    <div id="auth-loading" style="display: none;">
-                        <span>Loading...</span>
-                    </div>
-                    <div id="auth-login" style="display: none;">
-                        <button id="login-btn" class="auth-btn">Log In</button>
-                    </div>
-                    <div id="auth-user" style="display: none;">
-                        <span id="user-name"></span>
-                        <button id="logout-btn" class="auth-btn logout">Log Out</button>
-                    </div>
-                </div>
             </div>
         </header>
 
         <main class="app">
-            <div id="app-loading" class="app-loading" style="display: none;">
-                <p>Initializing authentication...</p>
-            </div>
-
-            <div id="app-content" style="display: none;">
-                <div class="input-group">
+            <div class="input-group">
                     <label for="movie-title">Movie Title</label>
                     <input type="text" id="movie-title" placeholder="Enter movie title..." />
                 </div>
@@ -77,9 +55,8 @@
                 <p>Searching for movie...</p>
             </div>
 
-                <div id="error" class="error" style="display: none;">
-                    <p id="error-message"></p>
-                </div>
+            <div id="error" class="error" style="display: none;">
+                <p id="error-message"></p>
             </div>
         </main>
 
@@ -90,7 +67,6 @@
         </footer>
     </div>
 
-    <script src="auth.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
