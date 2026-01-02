@@ -1,5 +1,5 @@
 // Validation constants
-const VALID_BUFFER_VALUES = ['0', '5', '10', '15', '20', '25', '30'];
+export const VALID_BUFFER_VALUES = ['0', '5', '10', '15', '20', '25', '30'];
 
 class MovieEndTimeCalculator {
     constructor() {
@@ -237,6 +237,9 @@ class MovieEndTimeCalculator {
     }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    new MovieEndTimeCalculator();
-});
+// Only initialize if running in browser environment
+if (typeof document !== 'undefined') {
+    document.addEventListener('DOMContentLoaded', () => {
+        new MovieEndTimeCalculator();
+    });
+}
