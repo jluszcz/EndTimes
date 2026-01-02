@@ -6,10 +6,13 @@ export default defineWorkersConfig({
     include: ['test/**/*.test.js'],
     poolOptions: {
       workers: {
+        // Load production wrangler configuration
         wrangler: { configPath: './wrangler.toml' },
+        // Test-specific environment bindings (isolated from production)
         miniflare: {
           bindings: {
-            TMDB_API_KEY: 'test-api-key',
+            // Mock API key for testing - not used in actual TMDB calls due to mocked fetch
+            TMDB_API_KEY: process.env.TMDB_API_KEY || 'test-mock-api-key',
           },
         },
       },

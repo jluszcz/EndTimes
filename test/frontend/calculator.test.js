@@ -1,7 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-
-// Import the validation constants
-const VALID_BUFFER_VALUES = ['0', '5', '10', '15', '20', '25', '30'];
+import { VALID_BUFFER_VALUES } from '../../public/script.js';
 
 describe('Frontend Logic Tests', () => {
   describe('Time Formatting', () => {
