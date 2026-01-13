@@ -1,5 +1,5 @@
 // Validation constants
-export const VALID_BUFFER_VALUES = ['0', '5', '10', '15', '20', '25', '30'];
+const VALID_BUFFER_VALUES = ['0', '5', '10', '15', '20', '25', '30'];
 
 class MovieEndTimeCalculator {
     constructor() {
