@@ -22,7 +22,7 @@
     "@cloudflare/workers-types": "^4.20260124.0",
     "happy-dom": "^20.3.7",
     "typescript": "^5.9.3",
-    "vitest": "^3.2.4",
+    "vitest": "^4.0.18",
     "wrangler": "^4.59.3"
   }
 }
