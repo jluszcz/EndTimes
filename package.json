@@ -18,7 +18,7 @@
   "author": "Jacob Luszcz",
   "license": "MIT",
   "devDependencies": {
-    "@cloudflare/vitest-pool-workers": "^0.12.6",
+    "@cloudflare/vitest-pool-workers": "^0.12.14",
     "@cloudflare/workers-types": "^4.20260124.0",
     "happy-dom": "^20.3.7",
     "typescript": "^5.9.3",
