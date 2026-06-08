@@ -251,14 +251,14 @@ function initTheme() {
         return (s === 'light' || s === 'dark') ? s : (systemDark() ? 'dark' : 'light');
     };
 
-    const applyTheme = (theme) => {
+    const applyTheme = (theme, persist = false) => {
         document.documentElement.dataset.theme = theme;
-        localStorage.setItem('theme', theme);
+        if (persist) localStorage.setItem('theme', theme);
         btn.title = theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
         btn.innerHTML = theme === 'dark' ? SUN_SVG : MOON_SVG;
     };
 
-    btn.addEventListener('click', () => applyTheme(getTheme() === 'dark' ? 'light' : 'dark'));
+    btn.addEventListener('click', () => applyTheme(getTheme() === 'dark' ? 'light' : 'dark', true));
 
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
         if (!storedTheme()) applyTheme(e.matches ? 'dark' : 'light');
