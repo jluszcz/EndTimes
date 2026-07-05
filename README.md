@@ -23,6 +23,7 @@ A web application that calculates when your movie will end, including buffer tim
 ## Setup
 
 ### Prerequisites
+
 - Node.js and npm
 - Cloudflare account with Workers access
 - TMDB API key
@@ -30,10 +31,12 @@ A web application that calculates when your movie will end, including buffer tim
 ### 1. Get TMDB API Key
 
 Visit [The Movie Database](https://www.themoviedb.org/settings/api) and:
+
 - Create an account
 - Request an API key (free)
 
 ### 2. Install Dependencies
+
 ```bash
 npm install
 ```
@@ -47,6 +50,7 @@ npx wrangler secret put TMDB_API_KEY
 ```
 
 For local development, create a `.dev.vars` file:
+
 ```bash
 TMDB_API_KEY="your_tmdb_api_key"
 ```
@@ -76,6 +80,7 @@ Cloudflare Access handles all authentication - no code required!
 That's it! Access will now require login before anyone can reach your application.
 
 ### 5. Development
+
 ```bash
 npm run dev
 # Server runs on http://localhost:8787
@@ -84,6 +89,7 @@ npm run dev
 **Note**: Cloudflare Access doesn't run in local development. To test locally without auth, temporarily comment out the Access application in your dashboard or test authentication features only in production.
 
 ### 6. Deployment
+
 ```bash
 npm run deploy
 ```
@@ -93,6 +99,7 @@ After deployment, visit your Workers URL. Cloudflare Access will prompt you to l
 ## Usage
 
 ### Getting Started
+
 1. **Authentication**: Visit your app URL - Cloudflare Access will prompt for login
 2. **Movie Search**: Enter a movie title in the search field
 3. **Set Time**: Choose your desired start time using the time picker
@@ -101,15 +108,18 @@ After deployment, visit your Workers URL. Cloudflare Access will prompt you to l
 6. **View Results**: See the estimated start time and end time for the movie
 
 ### URL Parameters
+
 You can pre-fill the form and auto-search using URL parameters:
 
 **Available parameters:**
+
 - `movie` - Movie title to search for
 - `time` - Start time in HH:MM format (e.g., "19:30")
 - `buffer` - Trailer duration in minutes (0, 5, 10, 15, 20, 25, or 30)
 - `auto` - Set to "true" to automatically search on page load
 
 **Examples:**
+
 ```
 ?movie=Dune&time=20:00&buffer=25
 ?movie=Oppenheimer&time=19:30&buffer=20&auto=true
@@ -134,7 +144,24 @@ All API endpoints are automatically protected by Cloudflare Access.
 
 ## Development
 
+### Code Quality
+
+Formatting and linting are enforced in CI (see `.github/workflows/test.yml`) and available locally:
+
+```bash
+npm run format        # Format all files with Prettier
+npm run format:check  # Check formatting without writing (CI uses this)
+npm run lint          # Lint JavaScript with ESLint
+npm run lint:fix      # Lint and auto-fix where possible
+npm test              # Run the unit test suite (Vitest)
+```
+
+- **Prettier** handles formatting (config in `.prettierrc.json`, ignores in `.prettierignore`).
+- **ESLint** handles linting (flat config in `eslint.config.mjs`).
+- These checks also run via [pre-commit](https://pre-commit.com/) hooks (`.pre-commit-config.yaml`); install them with `pre-commit install`.
+
 ### File Structure
+
 ```
 ├── public/              # Static frontend assets
 │   ├── index.html      # Main application interface
@@ -142,6 +169,9 @@ All API endpoints are automatically protected by Cloudflare Access.
 │   └── styles.css      # Responsive styling
 ├── src/
 │   └── index.js        # Cloudflare Worker with API routes
+├── test/               # Vitest unit tests (frontend + worker)
+├── eslint.config.mjs   # ESLint flat config
+├── .prettierrc.json    # Prettier formatting config
 ├── wrangler.toml       # Cloudflare Workers configuration
 └── package.json        # Dependencies and scripts
 ```

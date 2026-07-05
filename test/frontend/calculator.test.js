@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { VALID_BUFFER_VALUES } from '../../public/script.js';
 
 describe('Frontend Logic Tests', () => {
@@ -8,7 +8,7 @@ describe('Frontend Logic Tests', () => {
       const formatted = date.toLocaleTimeString([], {
         hour: '2-digit',
         minute: '2-digit',
-        hour12: true
+        hour12: true,
       });
       expect(formatted).toMatch(/9:30.*AM/i);
     });
@@ -18,7 +18,7 @@ describe('Frontend Logic Tests', () => {
       const formatted = date.toLocaleTimeString([], {
         hour: '2-digit',
         minute: '2-digit',
-        hour12: true
+        hour12: true,
       });
       expect(formatted).toMatch(/2:45.*PM/i);
     });
@@ -28,7 +28,7 @@ describe('Frontend Logic Tests', () => {
       const formatted = date.toLocaleTimeString([], {
         hour: '2-digit',
         minute: '2-digit',
-        hour12: true
+        hour12: true,
       });
       expect(formatted).toMatch(/12:00.*AM/i);
     });
@@ -161,7 +161,12 @@ describe('Frontend Logic Tests', () => {
       const currentYear = new Date().getFullYear();
       const movies = [
         { id: 1, title: 'Old Movie', release_date: '1990-01-01', releaseYear: 1990 },
-        { id: 2, title: 'Recent Movie', release_date: `${currentYear}-01-01`, releaseYear: currentYear },
+        {
+          id: 2,
+          title: 'Recent Movie',
+          release_date: `${currentYear}-01-01`,
+          releaseYear: currentYear,
+        },
         { id: 3, title: 'Mid Movie', release_date: '2010-01-01', releaseYear: 2010 },
       ];
 

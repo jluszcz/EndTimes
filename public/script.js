@@ -2,275 +2,273 @@
 export const VALID_BUFFER_VALUES = ['0', '5', '10', '15', '20', '25', '30'];
 
 class MovieEndTimeCalculator {
-    constructor() {
-        this.baseUrl = '/api';
+  constructor() {
+    this.baseUrl = '/api';
 
-        this.movieTitleInput = document.getElementById('movie-title');
-        this.startTimeInput = document.getElementById('start-time');
-        this.bufferTimeSelect = document.getElementById('buffer-time');
-        this.calculateBtn = document.getElementById('calculate-btn');
-        this.resultsDiv = document.getElementById('results');
-        this.loadingDiv = document.getElementById('loading');
-        this.errorDiv = document.getElementById('error');
+    this.movieTitleInput = document.getElementById('movie-title');
+    this.startTimeInput = document.getElementById('start-time');
+    this.bufferTimeSelect = document.getElementById('buffer-time');
+    this.calculateBtn = document.getElementById('calculate-btn');
+    this.resultsDiv = document.getElementById('results');
+    this.loadingDiv = document.getElementById('loading');
+    this.errorDiv = document.getElementById('error');
 
-        this.populateBufferOptions();
-        this.init();
-    }
+    this.populateBufferOptions();
+    this.init();
+  }
 
-    populateBufferOptions() {
-        VALID_BUFFER_VALUES.forEach(value => {
-            const option = document.createElement('option');
-            option.value = value;
-            option.textContent = value;
-            if (value === '20') {
-                option.selected = true;
-            }
-            this.bufferTimeSelect.appendChild(option);
-        });
-    }
+  populateBufferOptions() {
+    VALID_BUFFER_VALUES.forEach((value) => {
+      const option = document.createElement('option');
+      option.value = value;
+      option.textContent = value;
+      if (value === '20') {
+        option.selected = true;
+      }
+      this.bufferTimeSelect.appendChild(option);
+    });
+  }
 
-    init() {
-        this.calculateBtn.addEventListener('click', () => this.handleCalculate());
+  init() {
+    this.calculateBtn.addEventListener('click', () => this.handleCalculate());
 
-        // Handle Enter key on any form field
-        const formFields = [this.movieTitleInput, this.startTimeInput, this.bufferTimeSelect];
-        formFields.forEach(field => {
-            field.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    this.handleCalculate();
-                }
-            });
-        });
-
-        this.setCurrentTime();
-        this.loadFromUrlParams();
-        this.movieTitleInput.focus();
-    }
-
-    setCurrentTime() {
-        this.startTimeInput.value = '12:30';
-    }
-
-    loadFromUrlParams() {
-        const urlParams = new URLSearchParams(window.location.search);
-
-        const movie = urlParams.get('movie');
-        const time = urlParams.get('time');
-        const buffer = urlParams.get('buffer');
-        const auto = urlParams.get('auto');
-
-        if (movie) {
-            this.movieTitleInput.value = movie;
+    // Handle Enter key on any form field
+    const formFields = [this.movieTitleInput, this.startTimeInput, this.bufferTimeSelect];
+    formFields.forEach((field) => {
+      field.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          this.handleCalculate();
         }
+      });
+    });
 
-        // Time validation: Check format first, then set value
-        const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
-        if (time && timeRegex.test(time)) {
-            this.startTimeInput.value = time;
+    this.setCurrentTime();
+    this.loadFromUrlParams();
+    this.movieTitleInput.focus();
+  }
+
+  setCurrentTime() {
+    this.startTimeInput.value = '12:30';
+  }
+
+  loadFromUrlParams() {
+    const urlParams = new URLSearchParams(window.location.search);
+
+    const movie = urlParams.get('movie');
+    const time = urlParams.get('time');
+    const buffer = urlParams.get('buffer');
+    const auto = urlParams.get('auto');
+
+    if (movie) {
+      this.movieTitleInput.value = movie;
+    }
+
+    // Time validation: Check format first, then set value
+    const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+    if (time && timeRegex.test(time)) {
+      this.startTimeInput.value = time;
+    }
+
+    // Buffer validation: Convert to integer, validate type and range, then set value
+    if (buffer) {
+      const bufferInt = parseInt(buffer, 10);
+      const bufferStr = bufferInt.toString();
+      if (!isNaN(bufferInt) && VALID_BUFFER_VALUES.includes(bufferStr)) {
+        this.bufferTimeSelect.value = bufferStr;
+      }
+    }
+
+    if (movie && auto === 'true') {
+      this.handleCalculate();
+    }
+  }
+
+  updateUrlParams(movieTitle, startTime, bufferMinutes) {
+    const url = new URL(window.location);
+    url.searchParams.set('movie', movieTitle);
+    url.searchParams.set('time', startTime);
+    url.searchParams.set('buffer', bufferMinutes.toString());
+    url.searchParams.delete('auto');
+
+    window.history.replaceState({}, '', url);
+  }
+
+  async handleCalculate() {
+    const movieTitle = this.movieTitleInput.value.trim();
+    const startTime = this.startTimeInput.value;
+    const bufferMinutes = parseInt(this.bufferTimeSelect.value);
+
+    if (!movieTitle) {
+      this.showError('Please enter a movie title');
+      return;
+    }
+
+    if (!startTime) {
+      this.showError('Please select a start time');
+      return;
+    }
+
+    this.showLoading();
+    this.updateUrlParams(movieTitle, startTime, bufferMinutes);
+
+    try {
+      const movie = await this.searchMovie(movieTitle);
+      const movieDetails = await this.getMovieDetails(movie.id);
+      this.calculateAndDisplayTimes(movieDetails, startTime, bufferMinutes);
+    } catch (error) {
+      this.showError(error.message || 'Failed to find movie information');
+    }
+  }
+
+  async searchMovie(title) {
+    const searchUrl = `${this.baseUrl}/search?query=${encodeURIComponent(title)}`;
+    const response = await fetch(searchUrl);
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || 'Failed to search for movies');
+    }
+
+    const data = await response.json();
+
+    if (!data.results || data.results.length === 0) {
+      throw new Error('No movies found with that title');
+    }
+
+    const currentYear = new Date().getFullYear();
+    const recentMovies = data.results
+      .filter((movie) => movie.release_date)
+      .map((movie) => ({
+        ...movie,
+        releaseYear: parseInt(movie.release_date.split('-')[0]),
+      }))
+      .sort((a, b) => {
+        const aDiff = Math.abs(currentYear - a.releaseYear);
+        const bDiff = Math.abs(currentYear - b.releaseYear);
+        if (aDiff !== bDiff) {
+          return aDiff - bDiff;
         }
+        return b.releaseYear - a.releaseYear;
+      });
 
-        // Buffer validation: Convert to integer, validate type and range, then set value
-        if (buffer) {
-            const bufferInt = parseInt(buffer, 10);
-            const bufferStr = bufferInt.toString();
-            if (!isNaN(bufferInt) && VALID_BUFFER_VALUES.includes(bufferStr)) {
-                this.bufferTimeSelect.value = bufferStr;
-            }
-        }
+    return recentMovies[0];
+  }
 
-        if (movie && auto === 'true') {
-            this.handleCalculate();
-        }
+  async getMovieDetails(movieId) {
+    const detailsUrl = `${this.baseUrl}/movie/${movieId}`;
+    const response = await fetch(detailsUrl);
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || 'Failed to get movie details');
     }
 
-    updateUrlParams(movieTitle, startTime, bufferMinutes) {
-        const url = new URL(window.location);
-        url.searchParams.set('movie', movieTitle);
-        url.searchParams.set('time', startTime);
-        url.searchParams.set('buffer', bufferMinutes.toString());
-        url.searchParams.delete('auto');
+    return await response.json();
+  }
 
-        window.history.replaceState({}, '', url);
+  calculateAndDisplayTimes(movie, startTime, bufferMinutes) {
+    const runtime = movie.runtime;
+
+    if (!runtime) {
+      throw new Error('Runtime information not available for this movie');
     }
 
-    async handleCalculate() {
-        const movieTitle = this.movieTitleInput.value.trim();
-        const startTime = this.startTimeInput.value;
-        const bufferMinutes = parseInt(this.bufferTimeSelect.value);
+    const [startHours, startMinutes] = startTime.split(':').map(Number);
+    const startDate = new Date();
+    startDate.setHours(startHours, startMinutes, 0, 0);
 
-        if (!movieTitle) {
-            this.showError('Please enter a movie title');
-            return;
-        }
+    const estStartDate = new Date(startDate.getTime() + bufferMinutes * 60000);
+    const estEndDate = new Date(estStartDate.getTime() + runtime * 60000);
 
-        if (!startTime) {
-            this.showError('Please select a start time');
-            return;
-        }
+    this.displayResults(movie, estStartDate, estEndDate, runtime);
+  }
 
-        this.showLoading();
-        this.updateUrlParams(movieTitle, startTime, bufferMinutes);
+  displayResults(movie, estStartTime, estEndTime, runtime) {
+    const movieNameEl = document.getElementById('movie-name');
+    // Safely set movie title and metadata to prevent XSS
+    movieNameEl.textContent = movie.title;
 
-        try {
-            const movie = await this.searchMovie(movieTitle);
-            const movieDetails = await this.getMovieDetails(movie.id);
-            this.calculateAndDisplayTimes(movieDetails, startTime, bufferMinutes);
-        } catch (error) {
-            this.showError(error.message || 'Failed to find movie information');
-        }
-    }
+    const metaSpan = document.createElement('span');
+    metaSpan.className = 'movie-meta';
+    metaSpan.textContent = `(${movie.release_date ? movie.release_date.split('-')[0] : 'Unknown year'}) • ${runtime} min`;
+    movieNameEl.appendChild(document.createTextNode(' '));
+    movieNameEl.appendChild(metaSpan);
+    document.getElementById('movie-details').textContent = '';
 
-    async searchMovie(title) {
-        const searchUrl = `${this.baseUrl}/search?query=${encodeURIComponent(title)}`;
-        const response = await fetch(searchUrl);
+    document.getElementById('est-start-time').textContent = this.formatTime(estStartTime);
+    document.getElementById('est-end-time').textContent = this.formatTime(estEndTime);
 
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.error || 'Failed to search for movies');
-        }
+    this.hideLoading();
+    this.hideError();
+    this.resultsDiv.style.display = 'block';
+  }
 
-        const data = await response.json();
+  formatTime(date) {
+    return date.toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    });
+  }
 
-        if (!data.results || data.results.length === 0) {
-            throw new Error('No movies found with that title');
-        }
+  showLoading() {
+    this.loadingDiv.style.display = 'block';
+    this.resultsDiv.style.display = 'none';
+    this.hideError();
+    this.calculateBtn.disabled = true;
+  }
 
-        const currentYear = new Date().getFullYear();
-        const recentMovies = data.results
-            .filter(movie => movie.release_date)
-            .map(movie => ({
-                ...movie,
-                releaseYear: parseInt(movie.release_date.split('-')[0])
-            }))
-            .sort((a, b) => {
-                const aDiff = Math.abs(currentYear - a.releaseYear);
-                const bDiff = Math.abs(currentYear - b.releaseYear);
-                if (aDiff !== bDiff) {
-                    return aDiff - bDiff;
-                }
-                return b.releaseYear - a.releaseYear;
-            });
+  hideLoading() {
+    this.loadingDiv.style.display = 'none';
+    this.calculateBtn.disabled = false;
+  }
 
-        return recentMovies[0];
-    }
+  showError(message) {
+    document.getElementById('error-message').textContent = message;
+    this.errorDiv.style.display = 'block';
+    this.resultsDiv.style.display = 'none';
+    this.hideLoading();
+  }
 
-    async getMovieDetails(movieId) {
-        const detailsUrl = `${this.baseUrl}/movie/${movieId}`;
-        const response = await fetch(detailsUrl);
-
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.error || 'Failed to get movie details');
-        }
-
-        return await response.json();
-    }
-
-    calculateAndDisplayTimes(movie, startTime, bufferMinutes) {
-        const runtime = movie.runtime;
-
-        if (!runtime) {
-            throw new Error('Runtime information not available for this movie');
-        }
-
-        const [startHours, startMinutes] = startTime.split(':').map(Number);
-        const startDate = new Date();
-        startDate.setHours(startHours, startMinutes, 0, 0);
-
-        const estStartDate = new Date(startDate.getTime() + bufferMinutes * 60000);
-        const estEndDate = new Date(estStartDate.getTime() + runtime * 60000);
-
-        this.displayResults(movie, estStartDate, estEndDate, runtime);
-    }
-
-    displayResults(movie, estStartTime, estEndTime, runtime) {
-        const movieNameEl = document.getElementById('movie-name');
-        // Safely set movie title and metadata to prevent XSS
-        movieNameEl.textContent = movie.title;
-
-        const metaSpan = document.createElement('span');
-        metaSpan.className = 'movie-meta';
-        metaSpan.textContent = `(${movie.release_date ? movie.release_date.split('-')[0] : 'Unknown year'}) • ${runtime} min`;
-        movieNameEl.appendChild(document.createTextNode(' '));
-        movieNameEl.appendChild(metaSpan);
-        document.getElementById('movie-details').textContent = '';
-
-        document.getElementById('est-start-time').textContent =
-            this.formatTime(estStartTime);
-        document.getElementById('est-end-time').textContent =
-            this.formatTime(estEndTime);
-
-        this.hideLoading();
-        this.hideError();
-        this.resultsDiv.style.display = 'block';
-    }
-
-    formatTime(date) {
-        return date.toLocaleTimeString([], {
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: true
-        });
-    }
-
-    showLoading() {
-        this.loadingDiv.style.display = 'block';
-        this.resultsDiv.style.display = 'none';
-        this.hideError();
-        this.calculateBtn.disabled = true;
-    }
-
-    hideLoading() {
-        this.loadingDiv.style.display = 'none';
-        this.calculateBtn.disabled = false;
-    }
-
-    showError(message) {
-        document.getElementById('error-message').textContent = message;
-        this.errorDiv.style.display = 'block';
-        this.resultsDiv.style.display = 'none';
-        this.hideLoading();
-    }
-
-    hideError() {
-        this.errorDiv.style.display = 'none';
-    }
+  hideError() {
+    this.errorDiv.style.display = 'none';
+  }
 }
 
 const SUN_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>`;
 const MOON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>`;
 
 function initTheme() {
-    const btn = document.getElementById('theme-btn');
-    if (!btn) return;
+  const btn = document.getElementById('theme-btn');
+  if (!btn) return;
 
-    const storedTheme = () => localStorage.getItem('theme');
-    const systemDark = () => window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const getTheme = () => {
-        const s = storedTheme();
-        return (s === 'light' || s === 'dark') ? s : (systemDark() ? 'dark' : 'light');
-    };
+  const storedTheme = () => localStorage.getItem('theme');
+  const systemDark = () => window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const getTheme = () => {
+    const s = storedTheme();
+    return s === 'light' || s === 'dark' ? s : systemDark() ? 'dark' : 'light';
+  };
 
-    const applyTheme = (theme, persist = false) => {
-        document.documentElement.dataset.theme = theme;
-        if (persist) localStorage.setItem('theme', theme);
-        btn.title = theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
-        btn.innerHTML = theme === 'dark' ? SUN_SVG : MOON_SVG;
-    };
+  const applyTheme = (theme, persist = false) => {
+    document.documentElement.dataset.theme = theme;
+    if (persist) localStorage.setItem('theme', theme);
+    btn.title = theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
+    btn.innerHTML = theme === 'dark' ? SUN_SVG : MOON_SVG;
+  };
 
-    btn.addEventListener('click', () => applyTheme(getTheme() === 'dark' ? 'light' : 'dark', true));
+  btn.addEventListener('click', () => applyTheme(getTheme() === 'dark' ? 'light' : 'dark', true));
 
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
-        if (!storedTheme()) applyTheme(e.matches ? 'dark' : 'light');
-    });
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+    if (!storedTheme()) applyTheme(e.matches ? 'dark' : 'light');
+  });
 
-    applyTheme(getTheme());
+  applyTheme(getTheme());
 }
 
 // Only initialize if running in browser environment
 if (typeof document !== 'undefined') {
-    document.addEventListener('DOMContentLoaded', () => {
-        initTheme();
-        new MovieEndTimeCalculator();
-    });
+  document.addEventListener('DOMContentLoaded', () => {
+    initTheme();
+    new MovieEndTimeCalculator();
+  });
 }

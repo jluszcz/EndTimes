@@ -27,17 +27,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **API**: The Movie Database (TMDB) for movie data
 - **Styling**: CSS Grid, Flexbox, CSS custom properties
 - **Build Tools**: Wrangler (Cloudflare Workers CLI)
+- **Testing**: Vitest (with `@cloudflare/vitest-pool-workers`)
+- **Linting/Formatting**: ESLint (flat config) and Prettier
 - **Deployment**: Cloudflare Workers platform
 
 ## Development Setup
 
 ### Prerequisites
+
 - Node.js and npm
 - TMDB API key (free from themoviedb.org)
 - Cloudflare account with Workers and Zero Trust access
 - Wrangler CLI (installed as dev dependency)
 
 ### Configuration
+
 1. Install dependencies:
    ```bash
    npm install
@@ -57,6 +61,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Architecture Notes
 
 ### Authentication (Cloudflare Access)
+
 - **Zero-code solution** - All authentication handled in Cloudflare dashboard
 - **Edge-level protection** - Sits in front of Worker, no application code needed
 - **Policy-based access** - Email allowlist configured via dashboard
@@ -64,6 +69,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **No environment variables** - No secrets or configuration in code
 
 ### Backend (Cloudflare Workers)
+
 - **Worker Handler** (`src/index.js`) - Minimal API proxy (~105 lines)
 - **Static Asset Serving** - Serves frontend files from `public/` directory
 - **API Routes** - `/api/search` and `/api/movie/{id}` for TMDB integration
@@ -71,6 +77,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Environment Variables** - Only TMDB API key needed
 
 ### Frontend Components
+
 - **MovieEndTimeCalculator class** - Main application controller
 - **API Client** - Simple fetch() calls to Worker API routes
 - **URL parameter support** - Shareable/bookmarkable searches
@@ -78,6 +85,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **No auth code** - Cloudflare Access handles all authentication
 
 ### Key Features
+
 - Cloudflare Access authentication (dashboard-configured)
 - Movie search with smart matching (prioritizes recent releases)
 - Time calculation (start time + trailer duration + runtime)
@@ -89,6 +97,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Development Workflow
 
 ### Making Changes
+
 1. Start development server with `npm run dev`
 2. Test changes locally (no authentication in dev mode)
 3. Ensure responsive design works on mobile
@@ -96,7 +105,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 5. Deploy with `npm run deploy` when ready
 6. Test authentication in production environment
 
+### Validation
+
+Run these before committing (they are also enforced in CI via `.github/workflows/test.yml`):
+
+```bash
+npm run format:check  # Prettier formatting check (npm run format to auto-fix)
+npm run lint          # ESLint (npm run lint:fix to auto-fix)
+npm test              # Vitest unit tests
+```
+
+Configuration lives in `.prettierrc.json` (Prettier), `eslint.config.mjs` (ESLint),
+and `.pre-commit-config.yaml` (pre-commit hooks that run the same tools locally).
+
 ### Code Style
+
 - Modern JavaScript (ES6+ features)
 - CSS custom properties for theming
 - Semantic HTML structure
@@ -117,6 +140,7 @@ Total monthly cost: **$0**
 ## Adding Features
 
 When adding new features:
+
 - Frontend changes only require code updates
 - Backend remains a simple TMDB API proxy
 - Authentication is platform-level (no code changes needed)
