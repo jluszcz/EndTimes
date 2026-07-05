@@ -53,12 +53,15 @@ describe('Worker Tests', () => {
       const request = new Request('https://example.com/api/search?query=Inception');
 
       // Mock global fetch for TMDB API call using vi.stubGlobal for better isolation
-      vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({ results: [] }), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        })
-      ));
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue(
+          new Response(JSON.stringify({ results: [] }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        ),
+      );
 
       const testEnv = {
         ...env,
@@ -71,19 +74,22 @@ describe('Worker Tests', () => {
       expect(response.status).toBe(200);
       expect(data).toHaveProperty('results');
       expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('api.themoviedb.org/3/search/movie')
+        expect.stringContaining('api.themoviedb.org/3/search/movie'),
       );
     });
 
     it('should route /api/movie/:id to handleMovieDetails', async () => {
       const request = new Request('https://example.com/api/movie/123');
 
-      vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({ id: 123, title: 'Test Movie' }), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        })
-      ));
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue(
+          new Response(JSON.stringify({ id: 123, title: 'Test Movie' }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        ),
+      );
 
       const testEnv = {
         ...env,
@@ -96,7 +102,7 @@ describe('Worker Tests', () => {
       expect(response.status).toBe(200);
       expect(data).toHaveProperty('id', 123);
       expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('api.themoviedb.org/3/movie/123')
+        expect.stringContaining('api.themoviedb.org/3/movie/123'),
       );
     });
 
@@ -135,9 +141,10 @@ describe('Worker Tests', () => {
     it('should handle TMDB API errors gracefully', async () => {
       const request = new Request('https://example.com/api/search?query=Test');
 
-      vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
-        new Response('Server Error', { status: 500 })
-      ));
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue(new Response('Server Error', { status: 500 })),
+      );
 
       const testEnv = {
         ...env,
@@ -154,9 +161,10 @@ describe('Worker Tests', () => {
     it('should handle TMDB 4xx errors as 400', async () => {
       const request = new Request('https://example.com/api/search?query=Test');
 
-      vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
-        new Response('Bad Request', { status: 400 })
-      ));
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue(new Response('Bad Request', { status: 400 })),
+      );
 
       const testEnv = {
         ...env,
@@ -171,17 +179,18 @@ describe('Worker Tests', () => {
     it('should proxy successful TMDB search response', async () => {
       const request = new Request('https://example.com/api/search?query=Inception');
       const mockTMDBResponse = {
-        results: [
-          { id: 1, title: 'Inception', release_date: '2010-07-16' },
-        ],
+        results: [{ id: 1, title: 'Inception', release_date: '2010-07-16' }],
       };
 
-      vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
-        new Response(JSON.stringify(mockTMDBResponse), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        })
-      ));
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue(
+          new Response(JSON.stringify(mockTMDBResponse), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        ),
+      );
 
       const testEnv = {
         ...env,
@@ -198,9 +207,10 @@ describe('Worker Tests', () => {
     it('should URL-encode query parameters', async () => {
       const request = new Request('https://example.com/api/search?query=The Matrix: Reloaded');
 
-      vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({ results: [] }), { status: 200 })
-      ));
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue(new Response(JSON.stringify({ results: [] }), { status: 200 })),
+      );
 
       const testEnv = {
         ...env,
@@ -210,7 +220,7 @@ describe('Worker Tests', () => {
       await worker.fetch(request, testEnv);
 
       expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('The%20Matrix%3A%20Reloaded')
+        expect.stringContaining('The%20Matrix%3A%20Reloaded'),
       );
     });
   });
@@ -234,9 +244,10 @@ describe('Worker Tests', () => {
     it('should handle TMDB API errors gracefully', async () => {
       const request = new Request('https://example.com/api/movie/123');
 
-      vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
-        new Response('Server Error', { status: 500 })
-      ));
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue(new Response('Server Error', { status: 500 })),
+      );
 
       const testEnv = {
         ...env,
@@ -259,12 +270,15 @@ describe('Worker Tests', () => {
         release_date: '2010-07-16',
       };
 
-      vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
-        new Response(JSON.stringify(mockTMDBResponse), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        })
-      ));
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue(
+          new Response(JSON.stringify(mockTMDBResponse), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        ),
+      );
 
       const testEnv = {
         ...env,
@@ -281,9 +295,10 @@ describe('Worker Tests', () => {
     it('should use correct movie ID from URL path', async () => {
       const request = new Request('https://example.com/api/movie/550');
 
-      vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({ id: 550 }), { status: 200 })
-      ));
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue(new Response(JSON.stringify({ id: 550 }), { status: 200 })),
+      );
 
       const testEnv = {
         ...env,
@@ -292,9 +307,7 @@ describe('Worker Tests', () => {
 
       await worker.fetch(request, testEnv);
 
-      expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('/movie/550?')
-      );
+      expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('/movie/550?'));
     });
   });
 
@@ -317,9 +330,10 @@ describe('Worker Tests', () => {
     it('should work when TMDB_API_KEY is configured', async () => {
       const request = new Request('https://example.com/api/search?query=Test');
 
-      vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({ results: [] }), { status: 200 })
-      ));
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue(new Response(JSON.stringify({ results: [] }), { status: 200 })),
+      );
 
       const testEnv = {
         TMDB_API_KEY: 'test-key',
@@ -329,9 +343,7 @@ describe('Worker Tests', () => {
       const response = await worker.fetch(request, testEnv);
 
       expect(response.status).toBe(200);
-      expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('api_key=test-key')
-      );
+      expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('api_key=test-key'));
     });
   });
 
@@ -339,9 +351,10 @@ describe('Worker Tests', () => {
     it('should set Content-Type header for JSON responses', async () => {
       const request = new Request('https://example.com/api/search?query=Test');
 
-      vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({ results: [] }), { status: 200 })
-      ));
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue(new Response(JSON.stringify({ results: [] }), { status: 200 })),
+      );
 
       const testEnv = {
         ...env,

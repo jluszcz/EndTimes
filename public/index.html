@@ -1,74 +1,82 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>End Times</title>
-    <script>const t=localStorage.getItem('theme');if(t==='light'||t==='dark')document.documentElement.dataset.theme=t;</script>
-    <link rel="stylesheet" href="styles.css">
-</head>
-<body>
+    <script>
+      const t = localStorage.getItem('theme');
+      if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+    </script>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
     <div class="container">
-        <header>
-            <div class="header-content">
-                <h1><a href="index.html">End Times</a></h1>
-                <button id="theme-btn" class="theme-btn" title="Toggle theme"></button>
+      <header>
+        <div class="header-content">
+          <h1><a href="index.html">End Times</a></h1>
+          <button id="theme-btn" class="theme-btn" title="Toggle theme"></button>
+        </div>
+      </header>
+
+      <main class="app">
+        <div class="input-group">
+          <label for="movie-title">Movie Title</label>
+          <input type="text" id="movie-title" placeholder="Enter movie title..." />
+        </div>
+
+        <div class="input-group">
+          <label for="start-time">Start Time</label>
+          <input type="time" id="start-time" />
+        </div>
+
+        <div class="input-group">
+          <label for="buffer-time"
+            >Trailer Duration <span class="unit-label">(minutes)</span></label
+          >
+          <select id="buffer-time">
+            <!-- Options populated by JavaScript -->
+          </select>
+        </div>
+
+        <button id="calculate-btn" type="button">Go</button>
+
+        <div id="results" class="results" style="display: none">
+          <div class="movie-info">
+            <h3 id="movie-name"></h3>
+            <p id="movie-details"></p>
+          </div>
+          <div class="times">
+            <div class="time-display">
+              <label>Est. Start Time</label>
+              <div id="est-start-time" class="time-value"></div>
             </div>
-        </header>
-
-        <main class="app">
-            <div class="input-group">
-                <label for="movie-title">Movie Title</label>
-                <input type="text" id="movie-title" placeholder="Enter movie title..." />
+            <div class="time-display">
+              <label>Est. End Time</label>
+              <div id="est-end-time" class="time-value"></div>
             </div>
+          </div>
+        </div>
 
-            <div class="input-group">
-                <label for="start-time">Start Time</label>
-                <input type="time" id="start-time" />
-            </div>
+        <div id="loading" class="loading" style="display: none">
+          <p>Searching for movie...</p>
+        </div>
 
-            <div class="input-group">
-                <label for="buffer-time">Trailer Duration <span class="unit-label">(minutes)</span></label>
-                <select id="buffer-time">
-                    <!-- Options populated by JavaScript -->
-                </select>
-            </div>
+        <div id="error" class="error" style="display: none">
+          <p id="error-message"></p>
+        </div>
+      </main>
 
-            <button id="calculate-btn" type="button">Go</button>
-
-            <div id="results" class="results" style="display: none;">
-                <div class="movie-info">
-                    <h3 id="movie-name"></h3>
-                    <p id="movie-details"></p>
-                </div>
-                <div class="times">
-                    <div class="time-display">
-                        <label>Est. Start Time</label>
-                        <div id="est-start-time" class="time-value"></div>
-                    </div>
-                    <div class="time-display">
-                        <label>Est. End Time</label>
-                        <div id="est-end-time" class="time-value"></div>
-                    </div>
-                </div>
-            </div>
-
-            <div id="loading" class="loading" style="display: none;">
-                <p>Searching for movie...</p>
-            </div>
-
-            <div id="error" class="error" style="display: none;">
-                <p id="error-message"></p>
-            </div>
-        </main>
-
-        <footer>
-            <p class="attribution">
-                Data provided by <a href="https://www.themoviedb.org/" target="_blank" rel="noopener">The Movie Database (TMDB)</a>
-            </p>
-        </footer>
+      <footer>
+        <p class="attribution">
+          Data provided by
+          <a href="https://www.themoviedb.org/" target="_blank" rel="noopener"
+            >The Movie Database (TMDB)</a
+          >
+        </p>
+      </footer>
     </div>
 
     <script type="module" src="script.js"></script>
-</body>
+  </body>
 </html>
