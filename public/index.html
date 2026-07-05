@@ -41,28 +41,28 @@
 
         <button id="calculate-btn" type="button">Go</button>
 
-        <div id="results" class="results" style="display: none">
+        <div id="results" class="results" style="display: none" aria-live="polite">
           <div class="movie-info">
             <h3 id="movie-name"></h3>
             <p id="movie-details"></p>
           </div>
           <div class="times">
             <div class="time-display">
-              <label>Est. Start Time</label>
+              <span class="time-label">Est. Start Time</span>
               <div id="est-start-time" class="time-value"></div>
             </div>
             <div class="time-display">
-              <label>Est. End Time</label>
+              <span class="time-label">Est. End Time</span>
               <div id="est-end-time" class="time-value"></div>
             </div>
           </div>
         </div>
 
-        <div id="loading" class="loading" style="display: none">
+        <div id="loading" class="loading" style="display: none" aria-live="polite">
           <p>Searching for movie...</p>
         </div>
 
-        <div id="error" class="error" style="display: none">
+        <div id="error" class="error" style="display: none" role="alert">
           <p id="error-message"></p>
         </div>
       </main>

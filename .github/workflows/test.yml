@@ -51,6 +51,3 @@ jobs:
 
       - name: Run tests
         run: npm test
-        env:
-          # Mock TMDB API key for testing (not used in actual API calls during tests)
-          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY || 'test-api-key' }}

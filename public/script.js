@@ -1,5 +1,53 @@
 // Validation constants
 export const VALID_BUFFER_VALUES = ['0', '5', '10', '15', '20', '25', '30'];
+export const DEFAULT_START_TIME = '12:00';
+export const TIME_REGEX = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+
+// Picks the search result whose release year is closest to the current year,
+// preferring newer movies on ties. Falls back to the first result when no
+// result has a release date.
+export function pickBestMatch(results, currentYear) {
+  const datedMovies = results
+    .filter((movie) => movie.release_date)
+    .map((movie) => ({
+      ...movie,
+      releaseYear: parseInt(movie.release_date.split('-')[0]),
+    }))
+    .sort((a, b) => {
+      const aDiff = Math.abs(currentYear - a.releaseYear);
+      const bDiff = Math.abs(currentYear - b.releaseYear);
+      if (aDiff !== bDiff) {
+        return aDiff - bDiff;
+      }
+      return b.releaseYear - a.releaseYear;
+    });
+
+  return datedMovies[0] || results[0];
+}
+
+export function calculateTimes(startTime, bufferMinutes, runtime) {
+  const [startHours, startMinutes] = startTime.split(':').map(Number);
+  const startDate = new Date();
+  startDate.setHours(startHours, startMinutes, 0, 0);
+
+  const estStartDate = new Date(startDate.getTime() + bufferMinutes * 60000);
+  const estEndDate = new Date(estStartDate.getTime() + runtime * 60000);
+
+  return { estStartDate, estEndDate };
+}
+
+export function formatTime(date) {
+  return date.toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+  });
+}
+
+export function formatMovieMeta(movie, runtime) {
+  const year = movie.release_date ? movie.release_date.split('-')[0] : 'Unknown year';
+  return `(${year}) • ${runtime} min`;
+}
 
 class MovieEndTimeCalculator {
   constructor() {
@@ -35,20 +83,20 @@ class MovieEndTimeCalculator {
     // Handle Enter key on any form field
     const formFields = [this.movieTitleInput, this.startTimeInput, this.bufferTimeSelect];
     formFields.forEach((field) => {
-      field.addEventListener('keypress', (e) => {
+      field.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
           this.handleCalculate();
         }
       });
     });
 
-    this.setCurrentTime();
+    this.setDefaultTime();
     this.loadFromUrlParams();
     this.movieTitleInput.focus();
   }
 
-  setCurrentTime() {
-    this.startTimeInput.value = '12:30';
+  setDefaultTime() {
+    this.startTimeInput.value = DEFAULT_START_TIME;
   }
 
   loadFromUrlParams() {
@@ -64,14 +112,13 @@ class MovieEndTimeCalculator {
     }
 
     // Time validation: Check format first, then set value
-    const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
-    if (time && timeRegex.test(time)) {
+    if (time && TIME_REGEX.test(time)) {
       this.startTimeInput.value = time;
     }
 
     // Buffer validation: Convert to integer, validate type and range, then set value
     if (buffer) {
-      const bufferInt = parseInt(buffer, 10);
+      const bufferInt = parseInt(buffer);
       const bufferStr = bufferInt.toString();
       if (!isNaN(bufferInt) && VALID_BUFFER_VALUES.includes(bufferStr)) {
         this.bufferTimeSelect.value = bufferStr;
@@ -109,10 +156,11 @@ class MovieEndTimeCalculator {
     }
 
     this.showLoading();
-    this.updateUrlParams(movieTitle, startTime, bufferMinutes);
 
     try {
       const movie = await this.searchMovie(movieTitle);
+      // Only make the URL shareable once the title resolves to a real movie
+      this.updateUrlParams(movieTitle, startTime, bufferMinutes);
       const movieDetails = await this.getMovieDetails(movie.id);
       this.calculateAndDisplayTimes(movieDetails, startTime, bufferMinutes);
     } catch (error) {
@@ -135,23 +183,7 @@ class MovieEndTimeCalculator {
       throw new Error('No movies found with that title');
     }
 
-    const currentYear = new Date().getFullYear();
-    const recentMovies = data.results
-      .filter((movie) => movie.release_date)
-      .map((movie) => ({
-        ...movie,
-        releaseYear: parseInt(movie.release_date.split('-')[0]),
-      }))
-      .sort((a, b) => {
-        const aDiff = Math.abs(currentYear - a.releaseYear);
-        const bDiff = Math.abs(currentYear - b.releaseYear);
-        if (aDiff !== bDiff) {
-          return aDiff - bDiff;
-        }
-        return b.releaseYear - a.releaseYear;
-      });
-
-    return recentMovies[0];
+    return pickBestMatch(data.results, new Date().getFullYear());
   }
 
   async getMovieDetails(movieId) {
@@ -173,12 +205,7 @@ class MovieEndTimeCalculator {
       throw new Error('Runtime information not available for this movie');
     }
 
-    const [startHours, startMinutes] = startTime.split(':').map(Number);
-    const startDate = new Date();
-    startDate.setHours(startHours, startMinutes, 0, 0);
-
-    const estStartDate = new Date(startDate.getTime() + bufferMinutes * 60000);
-    const estEndDate = new Date(estStartDate.getTime() + runtime * 60000);
+    const { estStartDate, estEndDate } = calculateTimes(startTime, bufferMinutes, runtime);
 
     this.displayResults(movie, estStartDate, estEndDate, runtime);
   }
@@ -190,25 +217,17 @@ class MovieEndTimeCalculator {
 
     const metaSpan = document.createElement('span');
     metaSpan.className = 'movie-meta';
-    metaSpan.textContent = `(${movie.release_date ? movie.release_date.split('-')[0] : 'Unknown year'}) • ${runtime} min`;
+    metaSpan.textContent = formatMovieMeta(movie, runtime);
     movieNameEl.appendChild(document.createTextNode(' '));
     movieNameEl.appendChild(metaSpan);
     document.getElementById('movie-details').textContent = '';
 
-    document.getElementById('est-start-time').textContent = this.formatTime(estStartTime);
-    document.getElementById('est-end-time').textContent = this.formatTime(estEndTime);
+    document.getElementById('est-start-time').textContent = formatTime(estStartTime);
+    document.getElementById('est-end-time').textContent = formatTime(estEndTime);
 
     this.hideLoading();
     this.hideError();
     this.resultsDiv.style.display = 'block';
-  }
-
-  formatTime(date) {
-    return date.toLocaleTimeString([], {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true,
-    });
   }
 
   showLoading() {
