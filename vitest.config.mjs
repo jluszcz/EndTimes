@@ -9,8 +9,8 @@ export default defineConfig({
       // Test-specific environment bindings (isolated from production)
       miniflare: {
         bindings: {
-          // Mock API key for testing - not used in actual TMDB calls due to mocked fetch
-          TMDB_API_KEY: process.env.TMDB_API_KEY || 'test-mock-api-key',
+          // Static mock token - never used in real TMDB calls because fetch is mocked
+          TMDB_READ_ACCESS_TOKEN: 'test-mock-token',
         },
       },
     }),

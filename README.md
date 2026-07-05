@@ -26,14 +26,15 @@ A web application that calculates when your movie will end, including buffer tim
 
 - Node.js and npm
 - Cloudflare account with Workers access
-- TMDB API key
+- TMDB API Read Access Token
 
-### 1. Get TMDB API Key
+### 1. Get TMDB API Read Access Token
 
 Visit [The Movie Database](https://www.themoviedb.org/settings/api) and:
 
 - Create an account
-- Request an API key (free)
+- Request API access (free)
+- Copy the **API Read Access Token** (the long v4 token, not the v3 API key) — it is sent as a Bearer header
 
 ### 2. Install Dependencies
 
@@ -41,18 +42,18 @@ Visit [The Movie Database](https://www.themoviedb.org/settings/api) and:
 npm install
 ```
 
-### 3. Configure TMDB API Key
+### 3. Configure TMDB API Read Access Token
 
-Set up your TMDB API key using Wrangler:
+Store the token in the `TMDB_READ_ACCESS_TOKEN` secret using Wrangler:
 
 ```bash
-npx wrangler secret put TMDB_API_KEY
+npx wrangler secret put TMDB_READ_ACCESS_TOKEN
 ```
 
 For local development, create a `.dev.vars` file:
 
 ```bash
-TMDB_API_KEY="your_tmdb_api_key"
+TMDB_READ_ACCESS_TOKEN="your_tmdb_api_read_access_token"
 ```
 
 ### 4. Configure Cloudflare Access

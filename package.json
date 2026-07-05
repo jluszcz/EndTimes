@@ -2,10 +2,8 @@
   "name": "endtimes",
   "version": "1.0.0",
   "description": "A web application that calculates movie end times including trailer/preview duration",
-  "main": "src/index.js",
   "scripts": {
     "dev": "wrangler dev",
-    "build": "echo 'Build complete - static assets ready'",
     "deploy": "wrangler deploy",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -31,8 +29,7 @@
     "@eslint/js": "^10.0.1",
     "eslint": "^10.6.0",
     "globals": "^17.7.0",
-    "happy-dom": "^20.10.6",
-    "prettier": "3.9.4",
+    "prettier": "^3.9.4",
     "typescript": "^6.0.3",
     "vitest": "^4.1.9",
     "wrangler": "^4.75.0"

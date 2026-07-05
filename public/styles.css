@@ -258,7 +258,7 @@ header h1 a {
   border: 1px solid var(--border);
 }
 
-.time-display label {
+.time-display .time-label {
   display: block;
   font-size: 0.9rem;
   color: var(--text-muted);

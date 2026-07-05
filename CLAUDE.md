@@ -36,7 +36,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Prerequisites
 
 - Node.js and npm
-- TMDB API key (free from themoviedb.org)
+- TMDB API Read Access Token (free from themoviedb.org; the v4 Bearer token, stored in the `TMDB_READ_ACCESS_TOKEN` secret)
 - Cloudflare account with Workers and Zero Trust access
 - Wrangler CLI (installed as dev dependency)
 
@@ -46,9 +46,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
    ```bash
    npm install
    ```
-2. Set up your TMDB API key in Wrangler:
+2. Set up your TMDB API Read Access Token in Wrangler:
    ```bash
-   npx wrangler secret put TMDB_API_KEY
+   npx wrangler secret put TMDB_READ_ACCESS_TOKEN
    ```
 3. Configure Cloudflare Access (see README.md for detailed steps)
 4. Start development server:
@@ -70,11 +70,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Backend (Cloudflare Workers)
 
-- **Worker Handler** (`src/index.js`) - Minimal API proxy (~105 lines)
+- **Worker Handler** (`src/index.js`) - Minimal API proxy
 - **Static Asset Serving** - Serves frontend files from `public/` directory
 - **API Routes** - `/api/search` and `/api/movie/{id}` for TMDB integration
 - **Protected by Access** - Authentication happens before requests reach Worker
-- **Environment Variables** - Only TMDB API key needed
+- **Environment Variables** - Only TMDB read access token needed
 
 ### Frontend Components
 

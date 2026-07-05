@@ -75,6 +75,7 @@ describe('Worker Tests', () => {
       expect(data).toHaveProperty('results');
       expect(global.fetch).toHaveBeenCalledWith(
         expect.stringContaining('api.themoviedb.org/3/search/movie'),
+        expect.any(Object),
       );
     });
 
@@ -103,6 +104,7 @@ describe('Worker Tests', () => {
       expect(data).toHaveProperty('id', 123);
       expect(global.fetch).toHaveBeenCalledWith(
         expect.stringContaining('api.themoviedb.org/3/movie/123'),
+        expect.any(Object),
       );
     });
 
@@ -221,7 +223,25 @@ describe('Worker Tests', () => {
 
       expect(global.fetch).toHaveBeenCalledWith(
         expect.stringContaining('The%20Matrix%3A%20Reloaded'),
+        expect.any(Object),
       );
+    });
+
+    it('should return 502 when the TMDB request fails', async () => {
+      const request = new Request('https://example.com/api/search?query=Test');
+
+      vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Network error')));
+
+      const testEnv = {
+        ...env,
+        ASSETS: { fetch: mockAssetsFetch },
+      };
+
+      const response = await worker.fetch(request, testEnv);
+      const data = await response.json();
+
+      expect(response.status).toBe(502);
+      expect(data).toHaveProperty('error', 'Upstream request failed');
     });
   });
 
@@ -239,6 +259,36 @@ describe('Worker Tests', () => {
 
       expect(response.status).toBe(400);
       expect(data).toHaveProperty('error', 'Movie ID is required');
+    });
+
+    it('should return 400 if movie ID is not numeric', async () => {
+      const request = new Request('https://example.com/api/movie/123%2Fvideos');
+
+      const testEnv = {
+        ...env,
+        ASSETS: { fetch: mockAssetsFetch },
+      };
+
+      const response = await worker.fetch(request, testEnv);
+      const data = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(data).toHaveProperty('error', 'Movie ID must be numeric');
+    });
+
+    it('should return 404 for extra path segments after the movie ID', async () => {
+      const request = new Request('https://example.com/api/movie/123/videos');
+
+      const testEnv = {
+        ...env,
+        ASSETS: { fetch: mockAssetsFetch },
+      };
+
+      const response = await worker.fetch(request, testEnv);
+      const data = await response.json();
+
+      expect(response.status).toBe(404);
+      expect(data).toHaveProperty('error', 'Unknown API endpoint');
     });
 
     it('should handle TMDB API errors gracefully', async () => {
@@ -307,27 +357,30 @@ describe('Worker Tests', () => {
 
       await worker.fetch(request, testEnv);
 
-      expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('/movie/550?'));
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringMatching(/\/movie\/550$/),
+        expect.any(Object),
+      );
     });
   });
 
   describe('Environment Configuration', () => {
-    it('should return 500 if TMDB_API_KEY is not configured', async () => {
+    it('should return 500 if TMDB_READ_ACCESS_TOKEN is not configured', async () => {
       const request = new Request('https://example.com/api/search?query=Test');
 
       const testEnv = {
         ASSETS: { fetch: mockAssetsFetch },
-        // No TMDB_API_KEY
+        // No TMDB_READ_ACCESS_TOKEN
       };
 
       const response = await worker.fetch(request, testEnv);
       const data = await response.json();
 
       expect(response.status).toBe(500);
-      expect(data).toHaveProperty('error', 'TMDB API key not configured');
+      expect(data).toHaveProperty('error', 'TMDB read access token not configured');
     });
 
-    it('should work when TMDB_API_KEY is configured', async () => {
+    it('should work when TMDB_READ_ACCESS_TOKEN is configured', async () => {
       const request = new Request('https://example.com/api/search?query=Test');
 
       vi.stubGlobal(
@@ -336,14 +389,19 @@ describe('Worker Tests', () => {
       );
 
       const testEnv = {
-        TMDB_API_KEY: 'test-key',
+        TMDB_READ_ACCESS_TOKEN: 'test-key',
         ASSETS: { fetch: mockAssetsFetch },
       };
 
       const response = await worker.fetch(request, testEnv);
 
       expect(response.status).toBe(200);
-      expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('api_key=test-key'));
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.not.stringContaining('test-key'),
+        expect.objectContaining({
+          headers: expect.objectContaining({ Authorization: 'Bearer test-key' }),
+        }),
+      );
     });
   });
 
@@ -364,6 +422,42 @@ describe('Worker Tests', () => {
       const response = await worker.fetch(request, testEnv);
 
       expect(response.headers.get('Content-Type')).toBe('application/json');
+    });
+
+    it('should set Cache-Control on proxied search responses', async () => {
+      const request = new Request('https://example.com/api/search?query=Test');
+
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue(new Response(JSON.stringify({ results: [] }), { status: 200 })),
+      );
+
+      const testEnv = {
+        ...env,
+        ASSETS: { fetch: mockAssetsFetch },
+      };
+
+      const response = await worker.fetch(request, testEnv);
+
+      expect(response.headers.get('Cache-Control')).toBe('private, max-age=3600');
+    });
+
+    it('should set Cache-Control on proxied movie details responses', async () => {
+      const request = new Request('https://example.com/api/movie/550');
+
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue(new Response(JSON.stringify({ id: 550 }), { status: 200 })),
+      );
+
+      const testEnv = {
+        ...env,
+        ASSETS: { fetch: mockAssetsFetch },
+      };
+
+      const response = await worker.fetch(request, testEnv);
+
+      expect(response.headers.get('Cache-Control')).toBe('private, max-age=86400');
     });
 
     it('should set Content-Type for error responses', async () => {

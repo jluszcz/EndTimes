@@ -1,3 +1,45 @@
+const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
+
+function jsonResponse(body, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
+// Proxies a TMDB request, streaming the response body through on success.
+async function proxyTmdb(env, pathWithQuery, errorLabel, cacheSeconds) {
+  let response;
+  try {
+    response = await fetch(`${TMDB_BASE_URL}${pathWithQuery}`, {
+      headers: {
+        Authorization: `Bearer ${env.TMDB_READ_ACCESS_TOKEN}`,
+        Accept: 'application/json',
+      },
+    });
+  } catch (error) {
+    console.error(JSON.stringify({ message: 'TMDB request failed', error: error.message }));
+    return jsonResponse({ error: 'Upstream request failed', message: 'Unable to reach TMDB' }, 502);
+  }
+
+  if (!response.ok) {
+    // Discard the unread upstream body so workerd doesn't hold the connection open
+    await response.body?.cancel();
+    return jsonResponse(
+      { error: errorLabel, message: 'TMDB API temporarily unavailable' },
+      response.status >= 500 ? 503 : 400,
+    );
+  }
+
+  return new Response(response.body, {
+    headers: {
+      'Content-Type': 'application/json',
+      // The app sits behind Cloudflare Access, so keep responses out of shared caches
+      'Cache-Control': `private, max-age=${cacheSeconds}`,
+    },
+  });
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -12,112 +54,45 @@ export default {
   },
 
   async handleApiRequest(request, env, url) {
-    // Check if TMDB API key is available
-    if (!env.TMDB_API_KEY) {
-      return new Response(
-        JSON.stringify({
-          error: 'TMDB API key not configured',
-        }),
-        {
-          status: 500,
-          headers: { 'Content-Type': 'application/json' },
-        },
-      );
+    if (!env.TMDB_READ_ACCESS_TOKEN) {
+      return jsonResponse({ error: 'TMDB read access token not configured' }, 500);
     }
 
-    if (url.pathname === '/api/search') {
-      return this.handleMovieSearch(request, env);
-    } else if (url.pathname.startsWith('/api/movie/')) {
-      return this.handleMovieDetails(request, env, url);
+    try {
+      if (url.pathname === '/api/search') {
+        const query = url.searchParams.get('query');
+        if (!query) {
+          return jsonResponse({ error: 'Query parameter is required' }, 400);
+        }
+        // Search results change as new movies are added - cache briefly
+        return await proxyTmdb(
+          env,
+          `/search/movie?query=${encodeURIComponent(query)}`,
+          'Failed to search movies',
+          3600,
+        );
+      }
+
+      if (url.pathname.startsWith('/api/movie/')) {
+        const segments = url.pathname.split('/'); // ['', 'api', 'movie', '{id}']
+        if (segments.length !== 4) {
+          return jsonResponse({ error: 'Unknown API endpoint' }, 404);
+        }
+        const movieId = segments[3];
+        if (!movieId) {
+          return jsonResponse({ error: 'Movie ID is required' }, 400);
+        }
+        if (!/^\d+$/.test(movieId)) {
+          return jsonResponse({ error: 'Movie ID must be numeric' }, 400);
+        }
+        // Movie details (runtime, title) rarely change - cache for a day
+        return await proxyTmdb(env, `/movie/${movieId}`, 'Failed to get movie details', 86400);
+      }
+
+      return jsonResponse({ error: 'Unknown API endpoint' }, 404);
+    } catch (error) {
+      console.error(JSON.stringify({ message: 'API request failed', error: error.message }));
+      return jsonResponse({ error: 'Internal error' }, 500);
     }
-
-    // Unknown API endpoint
-    return new Response(
-      JSON.stringify({
-        error: 'Unknown API endpoint',
-      }),
-      {
-        status: 404,
-        headers: { 'Content-Type': 'application/json' },
-      },
-    );
-  },
-
-  async handleMovieSearch(request, env) {
-    const url = new URL(request.url);
-    const query = url.searchParams.get('query');
-
-    if (!query) {
-      return new Response(
-        JSON.stringify({
-          error: 'Query parameter is required',
-        }),
-        {
-          status: 400,
-          headers: { 'Content-Type': 'application/json' },
-        },
-      );
-    }
-
-    const tmdbUrl = `https://api.themoviedb.org/3/search/movie?api_key=${env.TMDB_API_KEY}&query=${encodeURIComponent(query)}`;
-    const response = await fetch(tmdbUrl);
-
-    if (!response.ok) {
-      return new Response(
-        JSON.stringify({
-          error: 'Failed to search movies',
-          message: 'TMDB API temporarily unavailable',
-        }),
-        {
-          status: response.status >= 500 ? 503 : 400,
-          headers: { 'Content-Type': 'application/json' },
-        },
-      );
-    }
-
-    const data = await response.json();
-
-    return new Response(JSON.stringify(data), {
-      headers: { 'Content-Type': 'application/json' },
-    });
-  },
-
-  async handleMovieDetails(request, env, url) {
-    const pathParts = url.pathname.split('/');
-    const movieId = pathParts[3]; // /api/movie/{id}
-
-    if (!movieId) {
-      return new Response(
-        JSON.stringify({
-          error: 'Movie ID is required',
-        }),
-        {
-          status: 400,
-          headers: { 'Content-Type': 'application/json' },
-        },
-      );
-    }
-
-    const tmdbUrl = `https://api.themoviedb.org/3/movie/${movieId}?api_key=${env.TMDB_API_KEY}`;
-    const response = await fetch(tmdbUrl);
-
-    if (!response.ok) {
-      return new Response(
-        JSON.stringify({
-          error: 'Failed to get movie details',
-          message: 'TMDB API temporarily unavailable',
-        }),
-        {
-          status: response.status >= 500 ? 503 : 400,
-          headers: { 'Content-Type': 'application/json' },
-        },
-      );
-    }
-
-    const data = await response.json();
-
-    return new Response(JSON.stringify(data), {
-      headers: { 'Content-Type': 'application/json' },
-    });
   },
 };
