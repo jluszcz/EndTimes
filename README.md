@@ -147,7 +147,7 @@ All API endpoints are automatically protected by Cloudflare Access.
 
 ### Code Quality
 
-Formatting and linting are enforced in CI (see `.github/workflows/test.yml`) and available locally:
+Formatting and linting are enforced in CI (see `.github/workflows/ci.yml`) and available locally:
 
 ```bash
 npm run format        # Format all files with Prettier

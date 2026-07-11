@@ -107,7 +107,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Validation
 
-Run these before committing (they are also enforced in CI via `.github/workflows/test.yml`):
+Run these before committing (they are also enforced in CI via `.github/workflows/ci.yml`):
 
 ```bash
 npm run format:check  # Prettier formatting check (npm run format to auto-fix)
@@ -118,7 +118,7 @@ npm test              # Vitest unit tests
 Configuration lives in `.prettierrc.json` (Prettier), `eslint.config.mjs` (ESLint),
 and `.pre-commit-config.yaml` (pre-commit hooks that run the same tools locally).
 
-The `CI` GitHub workflow (`.github/workflows/test.yml`) runs the same format/lint/test checks on
+The `CI` GitHub workflow (`.github/workflows/ci.yml`) runs the same format/lint/test checks on
 every push and pull request. A commit must pass all of them locally before it is committed —
 don't rely on CI to catch formatting or lint issues after the fact.
 
