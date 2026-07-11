@@ -118,6 +118,10 @@ npm test              # Vitest unit tests
 Configuration lives in `.prettierrc.json` (Prettier), `eslint.config.mjs` (ESLint),
 and `.pre-commit-config.yaml` (pre-commit hooks that run the same tools locally).
 
+The `CI` GitHub workflow (`.github/workflows/test.yml`) runs the same format/lint/test checks on
+every push and pull request. A commit must pass all of them locally before it is committed —
+don't rely on CI to catch formatting or lint issues after the fact.
+
 ### Code Style
 
 - Modern JavaScript (ES6+ features)
