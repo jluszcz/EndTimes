@@ -107,20 +107,27 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Validation
 
-Run these before committing (they are also enforced in CI via `.github/workflows/ci.yml`):
+Run these before committing (they are also enforced in CI):
 
 ```bash
-npm run format:check  # Prettier formatting check (npm run format to auto-fix)
-npm run lint          # ESLint (npm run lint:fix to auto-fix)
+npm run build         # No-op here, but CI invokes it, so keep it passing
 npm test              # Vitest unit tests
+npm run lint          # ESLint (npm run lint:fix to auto-fix)
+npm run format:check  # Prettier formatting check (npm run format to auto-fix)
 ```
 
 Configuration lives in `.prettierrc.json` (Prettier), `eslint.config.mjs` (ESLint),
 and `.pre-commit-config.yaml` (pre-commit hooks that run the same tools locally).
 
-The `CI` GitHub workflow (`.github/workflows/ci.yml`) runs the same format/lint/test checks on
-every push and pull request. A commit must pass all of them locally before it is committed —
-don't rely on CI to catch formatting or lint issues after the fact.
+`.github/workflows/ci.yml` is a thin caller of
+`jluszcz/github-utils/.github/workflows/node-ci.yml@v1` — the steps live in that shared workflow,
+not in this repo. It installs with `npm ci` against the lockfile on Node 22, then runs
+`npm run build`, `npm test`, `npm run lint`, and `npm run format:check`. Note `npm run build` is
+part of the gate and was previously undocumented here.
+
+The triggers are scoped to `main`: pushes to a feature branch do not run CI, only pushes to `main`
+and pull requests targeting `main`. A commit must pass all the checks locally before it is
+committed — don't rely on CI to catch formatting or lint issues after the fact.
 
 ### Code Style
 
