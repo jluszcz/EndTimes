@@ -46,53 +46,55 @@ export default {
 
     // Cloudflare Access handles authentication - if request reaches here, user is authenticated
     if (url.pathname.startsWith('/api/')) {
-      return this.handleApiRequest(request, env, url);
+      // Called directly rather than through `this`: workerd invokes the default
+      // export as a method today, but any destructuring or wrapper breaks that.
+      return handleApiRequest(request, env, url);
     }
 
     // Serve static assets for all other requests
     return env.ASSETS.fetch(request);
   },
-
-  async handleApiRequest(request, env, url) {
-    if (!env.TMDB_READ_ACCESS_TOKEN) {
-      return jsonResponse({ error: 'TMDB read access token not configured' }, 500);
-    }
-
-    try {
-      if (url.pathname === '/api/search') {
-        const query = url.searchParams.get('query');
-        if (!query) {
-          return jsonResponse({ error: 'Query parameter is required' }, 400);
-        }
-        // Search results change as new movies are added - cache briefly
-        return await proxyTmdb(
-          env,
-          `/search/movie?query=${encodeURIComponent(query)}`,
-          'Failed to search movies',
-          3600,
-        );
-      }
-
-      if (url.pathname.startsWith('/api/movie/')) {
-        const segments = url.pathname.split('/'); // ['', 'api', 'movie', '{id}']
-        if (segments.length !== 4) {
-          return jsonResponse({ error: 'Unknown API endpoint' }, 404);
-        }
-        const movieId = segments[3];
-        if (!movieId) {
-          return jsonResponse({ error: 'Movie ID is required' }, 400);
-        }
-        if (!/^\d+$/.test(movieId)) {
-          return jsonResponse({ error: 'Movie ID must be numeric' }, 400);
-        }
-        // Movie details (runtime, title) rarely change - cache for a day
-        return await proxyTmdb(env, `/movie/${movieId}`, 'Failed to get movie details', 86400);
-      }
-
-      return jsonResponse({ error: 'Unknown API endpoint' }, 404);
-    } catch (error) {
-      console.error(JSON.stringify({ message: 'API request failed', error: error.message }));
-      return jsonResponse({ error: 'Internal error' }, 500);
-    }
-  },
 };
+
+async function handleApiRequest(request, env, url) {
+  if (!env.TMDB_READ_ACCESS_TOKEN) {
+    return jsonResponse({ error: 'TMDB read access token not configured' }, 500);
+  }
+
+  try {
+    if (url.pathname === '/api/search') {
+      const query = url.searchParams.get('query');
+      if (!query) {
+        return jsonResponse({ error: 'Query parameter is required' }, 400);
+      }
+      // Search results change as new movies are added - cache briefly
+      return await proxyTmdb(
+        env,
+        `/search/movie?query=${encodeURIComponent(query)}`,
+        'Failed to search movies',
+        3600,
+      );
+    }
+
+    if (url.pathname.startsWith('/api/movie/')) {
+      const segments = url.pathname.split('/'); // ['', 'api', 'movie', '{id}']
+      if (segments.length !== 4) {
+        return jsonResponse({ error: 'Unknown API endpoint' }, 404);
+      }
+      const movieId = segments[3];
+      if (!movieId) {
+        return jsonResponse({ error: 'Movie ID is required' }, 400);
+      }
+      if (!/^\d+$/.test(movieId)) {
+        return jsonResponse({ error: 'Movie ID must be numeric' }, 400);
+      }
+      // Movie details (runtime, title) rarely change - cache for a day
+      return await proxyTmdb(env, `/movie/${movieId}`, 'Failed to get movie details', 86400);
+    }
+
+    return jsonResponse({ error: 'Unknown API endpoint' }, 404);
+  } catch (error) {
+    console.error(JSON.stringify({ message: 'API request failed', error: error.message }));
+    return jsonResponse({ error: 'Internal error' }, 500);
+  }
+}

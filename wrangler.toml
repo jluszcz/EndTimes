@@ -1,7 +1,6 @@
 name = "end-times"
 main = "src/index.js"
 compatibility_date = "2026-06-23"
-compatibility_flags = ["nodejs_compat"]
 
 [observability]
 enabled = true

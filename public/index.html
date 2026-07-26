@@ -5,8 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>End Times</title>
     <script>
-      const t = localStorage.getItem('theme');
-      if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+      // try/catch: storage access throws in Safari private mode, and an
+      // uncaught error here stops the rest of the page parsing.
+      try {
+        const t = localStorage.getItem('theme');
+        if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+      } catch {}
     </script>
     <link rel="stylesheet" href="styles.css" />
   </head>

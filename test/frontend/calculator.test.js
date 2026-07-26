@@ -162,3 +162,36 @@ describe('Frontend Logic Tests', () => {
     });
   });
 });
+
+describe('pickBestMatch title preference', () => {
+  const results = [
+    { id: 1, title: 'Superman', release_date: '1978-12-15' },
+    { id: 2, title: 'Superman: The Making Of', release_date: '2025-01-01' },
+  ];
+
+  it('prefers an exact title match over a closer release year', () => {
+    // TMDB orders by relevance; sorting purely by year distance threw that away
+    // and let a same-year documentary outrank the film the user typed.
+    expect(pickBestMatch(results, 2025, 'Superman').id).toBe(1);
+  });
+
+  it('is case- and whitespace-insensitive about the match', () => {
+    expect(pickBestMatch(results, 2025, '  superman  ').id).toBe(1);
+  });
+
+  it('falls back to the year heuristic when nothing matches exactly', () => {
+    expect(pickBestMatch(results, 2025, 'unrelated').id).toBe(2);
+  });
+
+  it('still works when no query is supplied', () => {
+    expect(pickBestMatch(results, 2025).id).toBe(2);
+  });
+
+  it('picks the closest year among several exact matches', () => {
+    const remakes = [
+      { id: 10, title: 'The Thing', release_date: '1982-06-25' },
+      { id: 11, title: 'The Thing', release_date: '2011-10-14' },
+    ];
+    expect(pickBestMatch(remakes, 2012, 'The Thing').id).toBe(11);
+  });
+});

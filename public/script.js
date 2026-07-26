@@ -6,8 +6,19 @@ export const TIME_REGEX = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
 // Picks the search result whose release year is closest to the current year,
 // preferring newer movies on ties. Falls back to the first result when no
 // result has a release date.
-export function pickBestMatch(results, currentYear) {
-  const datedMovies = results
+//
+// Results whose title matches the query exactly win outright: TMDB orders by
+// relevance, and sorting the whole list by year distance discards that — a
+// same-year documentary or short would otherwise outrank the film the user
+// actually typed.
+export function pickBestMatch(results, currentYear, query) {
+  const normalized = (query ?? '').trim().toLowerCase();
+  const exactMatches = normalized
+    ? results.filter((movie) => (movie.title ?? '').trim().toLowerCase() === normalized)
+    : [];
+  const candidates = exactMatches.length > 0 ? exactMatches : results;
+
+  const datedMovies = candidates
     .filter((movie) => movie.release_date)
     .map((movie) => ({
       ...movie,
@@ -22,7 +33,7 @@ export function pickBestMatch(results, currentYear) {
       return b.releaseYear - a.releaseYear;
     });
 
-  return datedMovies[0] || results[0];
+  return datedMovies[0] || candidates[0];
 }
 
 export function calculateTimes(startTime, bufferMinutes, runtime) {
@@ -49,7 +60,7 @@ export function formatMovieMeta(movie, runtime) {
   return `(${year}) • ${runtime} min`;
 }
 
-class MovieEndTimeCalculator {
+export class MovieEndTimeCalculator {
   constructor() {
     this.baseUrl = '/api';
 
@@ -141,6 +152,11 @@ class MovieEndTimeCalculator {
   }
 
   async handleCalculate() {
+    // The click path is gated by the disabled button; the Enter-key path is not,
+    // so without this, repeated Enter presses issue overlapping searches whose
+    // responses can land out of order.
+    if (this.calculateBtn.disabled) return;
+
     const movieTitle = this.movieTitleInput.value.trim();
     const startTime = this.startTimeInput.value;
     const bufferMinutes = parseInt(this.bufferTimeSelect.value);
@@ -183,7 +199,7 @@ class MovieEndTimeCalculator {
       throw new Error('No movies found with that title');
     }
 
-    return pickBestMatch(data.results, new Date().getFullYear());
+    return pickBestMatch(data.results, new Date().getFullYear(), title);
   }
 
   async getMovieDetails(movieId) {
@@ -257,28 +273,48 @@ class MovieEndTimeCalculator {
 const SUN_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>`;
 const MOON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>`;
 
-function initTheme() {
+// Storage access throws outright in some contexts — Safari private browsing
+// and any setup with site data blocked raise SecurityError on read as well as
+// write. A theme preference is not worth taking the page down for.
+function readStoredTheme() {
+  try {
+    const stored = localStorage.getItem('theme');
+    return stored === 'light' || stored === 'dark' ? stored : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredTheme(theme) {
+  try {
+    localStorage.setItem('theme', theme);
+  } catch {
+    // The choice just won't survive a reload.
+  }
+}
+
+export function initTheme() {
   const btn = document.getElementById('theme-btn');
   if (!btn) return;
 
-  const storedTheme = () => localStorage.getItem('theme');
   const systemDark = () => window.matchMedia('(prefers-color-scheme: dark)').matches;
-  const getTheme = () => {
-    const s = storedTheme();
-    return s === 'light' || s === 'dark' ? s : systemDark() ? 'dark' : 'light';
-  };
+  const getTheme = () => readStoredTheme() ?? (systemDark() ? 'dark' : 'light');
 
   const applyTheme = (theme, persist = false) => {
     document.documentElement.dataset.theme = theme;
-    if (persist) localStorage.setItem('theme', theme);
-    btn.title = theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
+    if (persist) writeStoredTheme(theme);
+    const label = theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
+    btn.title = label;
+    // The button's only content is an aria-hidden SVG, so without this a
+    // screen reader announces nothing.
+    btn.setAttribute('aria-label', label);
     btn.innerHTML = theme === 'dark' ? SUN_SVG : MOON_SVG;
   };
 
   btn.addEventListener('click', () => applyTheme(getTheme() === 'dark' ? 'light' : 'dark', true));
 
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
-    if (!storedTheme()) applyTheme(e.matches ? 'dark' : 'light');
+    if (!readStoredTheme()) applyTheme(e.matches ? 'dark' : 'light');
   });
 
   applyTheme(getTheme());
@@ -287,7 +323,9 @@ function initTheme() {
 // Only initialize if running in browser environment
 if (typeof document !== 'undefined') {
   document.addEventListener('DOMContentLoaded', () => {
-    initTheme();
+    // The calculator comes first: it is the app. Theme setup is cosmetic, and
+    // ordering it after means a failure there can never leave the page inert.
     new MovieEndTimeCalculator();
+    initTheme();
   });
 }
