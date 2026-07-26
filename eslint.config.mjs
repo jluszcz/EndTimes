@@ -40,4 +40,13 @@ export default [
       },
     },
   },
+  {
+    // The frontend suite runs in happy-dom, so browser globals are real there.
+    files: ['test/frontend/**/*.js'],
+    languageOptions: {
+      globals: {
+        ...globals.browser,
+      },
+    },
+  },
 ];

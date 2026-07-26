@@ -49,7 +49,7 @@ describe('Worker Tests', () => {
   });
 
   describe('API Routing', () => {
-    it('should route /api/search to handleMovieSearch', async () => {
+    it('should proxy /api/search to TMDB', async () => {
       const request = new Request('https://example.com/api/search?query=Inception');
 
       // Mock global fetch for TMDB API call using vi.stubGlobal for better isolation
@@ -79,7 +79,7 @@ describe('Worker Tests', () => {
       );
     });
 
-    it('should route /api/movie/:id to handleMovieDetails', async () => {
+    it('should proxy /api/movie/:id to TMDB', async () => {
       const request = new Request('https://example.com/api/movie/123');
 
       vi.stubGlobal(

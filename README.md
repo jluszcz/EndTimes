@@ -6,7 +6,8 @@ A web application that calculates when your movie will end, including buffer tim
 
 - **🔐 Secure Authentication**: Cloudflare Access with email or OAuth login
 - **🎬 Movie Search**: Searches The Movie Database (TMDB) for movies by title
-- **🎯 Smart Matching**: Finds the closest match prioritizing recent releases
+- **🎯 Smart Matching**: Prefers an exact title match, then the closest release year
+- **🌗 Light/Dark Theme**: Follows your system preference until you pick one
 - **⏰ Time Calculation**: Calculates end time based on start time + trailer duration + runtime
 - **📱 Responsive Design**: Works on both mobile and desktop devices
 - **🎭 Trailer Duration**: Configurable trailer time from 0-30 minutes (defaults to 20)
@@ -170,7 +171,11 @@ npm test              # Run the unit test suite (Vitest)
 │   └── styles.css      # Responsive styling
 ├── src/
 │   └── index.js        # Cloudflare Worker with API routes
-├── test/               # Vitest unit tests (frontend + worker)
+├── test/
+│   ├── frontend/       # Frontend tests (happy-dom)
+│   └── worker/         # Worker tests (workerd)
+├── .github/workflows/  # CI, calling the shared reusable workflows
+├── vitest.config.mjs   # Vitest projects, one per runtime
 ├── eslint.config.mjs   # ESLint flat config
 ├── .prettierrc.json    # Prettier formatting config
 ├── wrangler.toml       # Cloudflare Workers configuration
