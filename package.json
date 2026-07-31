@@ -23,11 +23,11 @@
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.18.8",
     "@eslint/js": "^10.0.1",
-    "eslint": "^10.6.0",
-    "globals": "^17.7.0",
+    "eslint": "^10.8.0",
+    "globals": "^17.8.0",
     "happy-dom": "^20.11.1",
-    "prettier": "^3.9.4",
-    "vitest": "^4.1.9",
+    "prettier": "^3.9.6",
+    "vitest": "^4.1.10",
     "wrangler": "^4.75.0"
   }
 }
