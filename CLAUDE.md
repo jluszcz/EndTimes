@@ -154,7 +154,7 @@ runtime it needs; ESLint grants browser globals to `test/frontend/**` for the sa
 guards its bootstrap with `typeof document !== 'undefined'` so importing the module never starts the app.
 
 `.github/workflows/ci.yml` is a thin caller of
-`jluszcz/github-utils/.github/workflows/node-ci.yml@v1` — the steps live in that shared workflow,
+`jluszcz/github-utils/.github/workflows/node-ci.yml` — the steps live in that shared workflow,
 not in this repo. It installs with `npm ci` against the lockfile on Node 22, then runs
 `npm run build`, `npm test`, `npm run lint`, and `npm run format:check`. Note `npm run build` is
 part of the gate and was previously undocumented here.
