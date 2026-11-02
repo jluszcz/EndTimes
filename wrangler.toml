@@ -8,3 +8,7 @@ enabled = true
 [assets]
 directory = "public"
 binding = "ASSETS"
+
+# Required by `wrangler preview`, which Workers Builds runs for non-production branches.
+# Empty: previews reuse the top-level assets and compatibility settings.
+[previews]
