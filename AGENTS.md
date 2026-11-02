@@ -33,7 +33,7 @@ This file provides guidance to AI coding agents when working with code in this r
 - **API**: The Movie Database (TMDB) for movie data
 - **Styling**: CSS Grid, Flexbox, CSS custom properties
 - **Build Tools**: Wrangler (Cloudflare Workers CLI)
-- **Testing**: Vitest (with `@cloudflare/vitest-pool-workers`)
+- **Testing**: Vitest (with `@cloudflare/vitest-plugin`)
 - **Linting/Formatting**: ESLint (flat config) and Prettier
 - **Deployment**: Cloudflare Workers platform
 
@@ -142,7 +142,7 @@ and `.pre-commit-config.yaml` (pre-commit hooks that run the same tools locally)
 
 `vitest.config.mjs` defines **two projects**, because the two halves of the app need different runtimes:
 
-- `worker` — `test/worker/**`, running in workerd via `@cloudflare/vitest-pool-workers`, with a mock
+- `worker` — `test/worker/**`, running in workerd via `@cloudflare/vitest-plugin`, with a mock
   `TMDB_READ_ACCESS_TOKEN` binding.
 - `frontend` — `test/frontend/**`, running in happy-dom, so `document` and `localStorage` exist.
 
